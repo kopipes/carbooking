@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id         Int       @id @default(autoincrement())
+  name       String
+  email      String    @unique
+  password   String
+  role       Role      @default(USER)
+  phone      String?
+  active     Boolean   @default(true)
+  divisionId Int
+  division   Division  @relation(fields: [divisionId], references: [id])
+  bookings   Booking[]
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model Division {
+  id    Int     @id @default(autoincrement())
+  name  String
+  code  String  @unique
+  desc  String?
+  users User[]
+}
+
+model Car {
+  id          Int             @id @default(autoincrement())
+  name        String
+  plate       String          @unique
+  type        String
+  capacity    Int             @default(4)
+  status      CarStatus       @default(AVAILABLE)
+  bookings    Booking[]
+  assignments CarAssignment[]
+}
+
+model Driver {
+  id          Int             @id @default(autoincrement())
+  name        String
+  phone       String?
+  license     String?
+  active      Boolean         @default(true)
+  assignments CarAssignment[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model CarAssignment {
+  id       Int      @id @default(autoincrement())
+  carId    Int
+  car      Car      @relation(fields: [carId], references: [id])
+  driverId Int
+  driver   Driver   @relation(fields: [driverId], references: [id])
+  date     String   // WIB date YYYY-MM-DD
+  note     String?
+  createdAt DateTime @default(now())
+
+  @@unique([carId, date]) // one driver per car per day
+}
+
+model Booking {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
+  carId       Int
+  car         Car      @relation(fields: [carId], references: [id])
+  startTime   DateTime
+  endTime     DateTime
+  durationMin Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  USER
+}
+
+enum CarStatus {
+  AVAILABLE
+  MAINTENANCE
+}
