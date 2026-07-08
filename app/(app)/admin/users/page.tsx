@@ -182,53 +182,100 @@ export default function AdminUsersPage() {
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="py-12 text-center text-gray-400">Loading...</div>
+        ) : filteredUsers.length === 0 ? (
+          <div className="py-10 text-center text-gray-400">
+            {search ? `Tidak ada hasil untuk "${search}"` : "Belum ada user"}
+          </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Name</th>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Email</th>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Division</th>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Role</th>
-                <th className="text-left px-4 py-3 text-gray-600 font-medium">Status</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filteredUsers.length === 0 ? (
-                <tr><td colSpan={6} className="py-10 text-center text-gray-400">
-                  {search ? `Tidak ada hasil untuk "${search}"` : "Belum ada user"}
-                </td></tr>
-              ) : filteredUsers.map((u) => (
-                <tr key={u.id} className={`hover:bg-gray-50 ${!u.active ? "opacity-50" : ""}`}>
-                  <td className="px-4 py-3 font-medium text-gray-800">{u.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{u.email}</td>
-                  <td className="px-4 py-3 text-gray-600">{u.division?.name}</td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleColor[u.role] ?? "bg-gray-100 text-gray-600"}`}>
-                      {u.role}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${u.active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                      {u.active ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button onClick={() => startEdit(u)} className="text-blue-600 hover:underline text-xs mr-3">Edit</button>
+          <>
+            {/* Mobile: card list */}
+            <div className="md:hidden divide-y divide-gray-100">
+              {filteredUsers.map(u => (
+                <div key={u.id} className={`px-4 py-4 ${!u.active ? "opacity-50" : ""}`}>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div>
+                      <p className="font-semibold text-gray-800 text-sm">{u.name}</p>
+                      <p className="text-xs text-gray-500">{u.email}</p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleColor[u.role] ?? "bg-gray-100 text-gray-600"}`}>
+                        {u.role}
+                      </span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${u.active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                        {u.active ? "Aktif" : "Nonaktif"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500 space-y-0.5 mb-3">
+                    <p>{u.division?.name} <span className="text-gray-400">({u.division?.code})</span></p>
+                    {u.phone && <p>{u.phone}</p>}
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => { startEdit(u); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                      className="text-sm text-blue-600 font-medium hover:underline"
+                    >
+                      Edit
+                    </button>
                     {u.active && (
                       <button
-                        onClick={() => { if (confirm(`Deactivate ${u.name}?`)) deactivate.mutate(u.id); }}
-                        className="text-red-500 hover:underline text-xs"
+                        onClick={() => { if (confirm(`Nonaktifkan ${u.name}?`)) deactivate.mutate(u.id); }}
+                        className="text-sm text-red-500 font-medium hover:underline"
                       >
-                        Deactivate
+                        Nonaktifkan
                       </button>
                     )}
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+
+            {/* Desktop: table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-gray-600 font-medium">Name</th>
+                    <th className="text-left px-4 py-3 text-gray-600 font-medium">Email</th>
+                    <th className="text-left px-4 py-3 text-gray-600 font-medium">Division</th>
+                    <th className="text-left px-4 py-3 text-gray-600 font-medium">Role</th>
+                    <th className="text-left px-4 py-3 text-gray-600 font-medium">Status</th>
+                    <th className="px-4 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {filteredUsers.map(u => (
+                    <tr key={u.id} className={`hover:bg-gray-50 ${!u.active ? "opacity-50" : ""}`}>
+                      <td className="px-4 py-3 font-medium text-gray-800">{u.name}</td>
+                      <td className="px-4 py-3 text-gray-600">{u.email}</td>
+                      <td className="px-4 py-3 text-gray-600">{u.division?.name}</td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleColor[u.role] ?? "bg-gray-100 text-gray-600"}`}>
+                          {u.role}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${u.active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                          {u.active ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button onClick={() => startEdit(u)} className="text-blue-600 hover:underline text-xs mr-3">Edit</button>
+                        {u.active && (
+                          <button
+                            onClick={() => { if (confirm(`Deactivate ${u.name}?`)) deactivate.mutate(u.id); }}
+                            className="text-red-500 hover:underline text-xs"
+                          >
+                            Deactivate
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>
