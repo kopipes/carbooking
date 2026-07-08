@@ -1,22 +1,20 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
-import { wibToUTC } from "@/lib/wib";
+import { toWIBDateStr, wibToUTC } from "@/lib/wib";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const page = parseInt(searchParams.get("page") ?? "1");
-  const limit = parseInt(searchParams.get("limit") ?? "10");
-  const carId = searchParams.get("carId") ? parseInt(searchParams.get("carId")!) : undefined;
-  const userId = (session.user as any).role === "USER"
-    ? parseInt((session.user as any).id)
-    : undefined;
+  const page   = parseInt(searchParams.get("page")  ?? "1");
+  const limit  = parseInt(searchParams.get("limit") ?? "10");
+  const carId  = searchParams.get("carId") ? parseInt(searchParams.get("carId")!) : undefined;
+  const userId = session.user.role === "USER" ? parseInt(session.user.id) : undefined;
 
   const where: any = {};
-  if (carId) where.carId = carId;
+  if (carId)  where.carId  = carId;
   if (userId) where.userId = userId;
 
   const [bookings, total] = await Promise.all([
@@ -27,24 +25,35 @@ export async function GET(req: NextRequest) {
       take: limit,
       include: {
         user: { select: { name: true, email: true } },
-        car: { select: { name: true, plate: true } },
+        car:  { select: { name: true, plate: true } },
       },
     }),
     prisma.booking.count({ where }),
   ]);
 
-  // Attach driver assignment for each booking's WIB date
-  const bookingsWithDriver = await Promise.all(
-    bookings.map(async (b) => {
-      const bookingDate = new Date(new Date(b.startTime).getTime() + 7 * 3600000)
-        .toISOString().split("T")[0];
-      const assignment = await prisma.carAssignment.findUnique({
-        where: { carId_date: { carId: b.carId, date: bookingDate } },
-        select: { driver: { select: { name: true, phone: true } } },
-      });
-      return { ...b, driver: assignment?.driver ?? null };
-    })
-  );
+  // Batch-fetch driver assignments — one query for all bookings (no N+1)
+  const datesToFetch = [...new Set(bookings.map(b => toWIBDateStr(b.startTime)))];
+  const carIds       = [...new Set(bookings.map(b => b.carId))];
+
+  const assignments = datesToFetch.length > 0
+    ? await prisma.carAssignment.findMany({
+        where: { carId: { in: carIds }, date: { in: datesToFetch } },
+        select: {
+          carId:  true,
+          date:   true,
+          driver: { select: { name: true, phone: true } },
+        },
+      })
+    : [];
+
+  // Build lookup map: "carId_date" -> driver
+  const driverMap = new Map<string, { name: string; phone: string | null } | null>();
+  assignments.forEach(a => driverMap.set(`${a.carId}_${a.date}`, a.driver));
+
+  const bookingsWithDriver = bookings.map(b => ({
+    ...b,
+    driver: driverMap.get(`${b.carId}_${toWIBDateStr(b.startTime)}`) ?? null,
+  }));
 
   return NextResponse.json({ bookings: bookingsWithDriver, total, page, limit, pages: Math.ceil(total / limit) });
 }
@@ -54,26 +63,19 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { title, description, carId, startTimeWIB, endTimeWIB, date, startSlot, endSlot, durationMin } = body;
+  const { title, description, carId, date, startSlot, endSlot, durationMin } = body;
 
-  if (!title || !carId || !durationMin) {
+  if (!title || !carId || !date || !startSlot || !endSlot || !durationMin) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  // Accept either pre-built ISO strings or WIB date+time components
-  let start: Date, end: Date;
-  if (startTimeWIB && endTimeWIB) {
-    // WIB date+time strings: "2026-07-08" + "07:00"
-    start = wibToUTC(startTimeWIB.split("T")[0], startTimeWIB.split("T")[1]);
-    end   = wibToUTC(endTimeWIB.split("T")[0],   endTimeWIB.split("T")[1]);
-  } else if (date && startSlot && endSlot) {
-    start = wibToUTC(date, startSlot);
-    end   = wibToUTC(date, endSlot);
-  } else {
-    return NextResponse.json({ error: "Missing time fields" }, { status: 400 });
+  const start = wibToUTC(date, startSlot);
+  const end   = wibToUTC(date, endSlot);
+
+  if (end <= start) {
+    return NextResponse.json({ error: "Jam selesai harus lebih dari jam mulai" }, { status: 400 });
   }
 
-  // Conflict check
   const conflict = await prisma.booking.findFirst({
     where: {
       carId: parseInt(carId),
@@ -89,15 +91,15 @@ export async function POST(req: NextRequest) {
     data: {
       title,
       description,
-      carId: parseInt(carId),
-      userId: parseInt((session.user as any).id),
-      startTime: start,
-      endTime: end,
+      carId:       parseInt(carId),
+      userId:      parseInt(session.user.id),
+      startTime:   start,
+      endTime:     end,
       durationMin: parseInt(durationMin),
     },
     include: {
       user: { select: { name: true } },
-      car: { select: { name: true, plate: true } },
+      car:  { select: { name: true, plate: true } },
     },
   });
 

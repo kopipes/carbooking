@@ -1,28 +1,21 @@
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { wibToUTC } from "@/lib/wib";
 
 export async function GET(req: NextRequest) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { searchParams } = new URL(req.url);
   const where: any = { status: "AVAILABLE" };
+  const date      = searchParams.get("date");
+  const startTime = searchParams.get("startTime");
+  const endTime   = searchParams.get("endTime");
 
-  const date       = searchParams.get("date");       // WIB YYYY-MM-DD
-  const startTime  = searchParams.get("startTime");  // WIB HH:MM or full ISO
-  const endTime    = searchParams.get("endTime");    // WIB HH:MM or full ISO
-
-  if (startTime && endTime) {
-    let start: Date, end: Date;
-
-    // If HH:MM format, combine with date
-    if (startTime.length <= 5 && date) {
-      start = wibToUTC(date, startTime);
-      end   = wibToUTC(date, endTime);
-    } else {
-      // Full ISO string
-      start = new Date(startTime);
-      end   = new Date(endTime);
-    }
-
+  if (date && startTime && endTime) {
+    const start = startTime.length <= 5 ? wibToUTC(date, startTime) : new Date(startTime);
+    const end   = endTime.length   <= 5 ? wibToUTC(date, endTime)   : new Date(endTime);
     const busyCars = await prisma.booking.findMany({
       where: { OR: [{ startTime: { lt: end }, endTime: { gt: start } }] },
       select: { carId: true },
@@ -36,12 +29,15 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { auth } = await import("@/auth");
   const session = await auth();
-  if (!session || (session.user as any).role !== "ADMIN") {
+  if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const body = await req.json();
-  const car = await prisma.car.create({ data: body });
+  const { name, plate, type, capacity, status } = body;
+  if (!name || !plate || !type) {
+    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+  const car = await prisma.car.create({ data: { name, plate, type, capacity: parseInt(capacity) || 4, status: status || "AVAILABLE" } });
   return NextResponse.json(car, { status: 201 });
 }

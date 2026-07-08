@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState, useCallback, useRef } from "react";
-import { toWIBDateStr, wibToUTC, fmtWIB } from "@/lib/wib";
+import { toWIBDateStr, wibToUTC, fmtWIB, wibHourFloat } from "@/lib/wib";
 
 interface TooltipData {
   booking: any;
@@ -34,11 +34,9 @@ function getWeekDays(base: Date): Date[] {
 function pad(n: number) { return String(n).padStart(2, "0"); }
 function toHM(h: number, m = 0) { return `${pad(h)}:${pad(m)}`; }
 
-// Get WIB hour (float) from a UTC date string
+// Get WIB hour (float) from a UTC date string - uses shared utility
 function wibHourOf(utcStr: string): number {
-  const d = new Date(utcStr);
-  const wib = new Date(d.getTime() + 7 * 3600000);
-  return wib.getUTCHours() + wib.getUTCMinutes() / 60;
+  return wibHourFloat(utcStr);
 }
 
 interface BookingBlock {
@@ -99,32 +97,40 @@ export default function CalendarPage() {
   const { data: bookings } = useQuery({
     queryKey: ["calendar-bookings", fromStr, toStr],
     queryFn: async () => {
-      const res = await fetch(`/api/bookings?limit=500&page=1`);
-      const data = await res.json();
-      const bookingList = data.bookings ?? [];
+      // Fetch bookings filtered to the displayed week only
+      const startUTC = wibToUTC(fromStr, "00:00").toISOString();
+      const endUTC   = wibToUTC(toStr,   "23:59").toISOString();
+      const params   = new URLSearchParams({ limit: "200", page: "1" });
+      const [bookingRes, assignRes] = await Promise.all([
+        fetch(`/api/bookings?${params}`),
+        fetch(`/api/assignments?date=${fromStr}`), // get all for week by fetching each day
+      ]);
+      const bookingList: any[] = (await bookingRes.json()).bookings ?? [];
 
-      // Fetch driver assignments for the week
-      const assignRes = await fetch(`/api/assignments?date=${fromStr}`);
-      // Get all assignments for the week range
-      const assignPromises = [];
-      const cur = new Date(weekDays[0]);
-      for (let i = 0; i < 7; i++) {
-        const ds = toWIBDateStr(new Date(cur.getTime() + i * 86400000));
-        assignPromises.push(fetch(`/api/assignments?date=${ds}`).then(r => r.json()));
-      }
-      const assignResults = await Promise.all(assignPromises);
-      // Build map: carId+date -> driver
-      const driverMap: Record<string, any> = {};
+      // Fetch all 7 days assignments in one parallel batch
+      const dayStrs = Array.from({ length: 7 }, (_, i) =>
+        toWIBDateStr(new Date(wibToUTC(fromStr, "00:00").getTime() + i * 86400000))
+      );
+      const assignResults = await Promise.all(
+        dayStrs.map(ds => fetch(`/api/assignments?date=${ds}`).then(r => r.json()))
+      );
+
+      // Build map: "carId_date" -> driver
+      const driverMap = new Map<string, any>();
       assignResults.flat().forEach((a: any) => {
-        driverMap[`${a.carId}_${a.date}`] = a.driver;
+        driverMap.set(`${a.carId}_${a.date}`, a.driver);
       });
 
-      // Attach driver to each booking
-      return bookingList.map((b: any) => {
-        const bookingDate = toWIBDateStr(b.startTime);
-        const driver = driverMap[`${b.carId}_${bookingDate}`] ?? null;
-        return { ...b, driver };
-      });
+      // Filter to current week and attach driver
+      return bookingList
+        .filter(b => {
+          const ds = toWIBDateStr(b.startTime);
+          return ds >= fromStr && ds <= toStr;
+        })
+        .map(b => ({
+          ...b,
+          driver: driverMap.get(`${b.carId}_${toWIBDateStr(b.startTime)}`) ?? null,
+        }));
     },
   });
 

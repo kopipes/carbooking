@@ -93,9 +93,7 @@ function NewBookingForm() {
       {/* LEFT — Calendar mini */}
       <BookingCalendar
         selectedDate={form.date}
-        selectedSlot={-1}
         onSelectDate={date => setForm(f => ({ ...f, date, carId: "" }))}
-        onSelectSlot={() => {}}
       />
 
       {/* RIGHT — Form */}

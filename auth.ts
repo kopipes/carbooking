@@ -5,9 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
-  pages: {
-    signIn: "/login",
-  },
+  pages: { signIn: "/login" },
   providers: [
     Credentials({
       credentials: {
@@ -27,9 +25,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           id: String(user.id),
           name: user.name,
           email: user.email,
-          role: user.role,
+          role: user.role as "ADMIN" | "MANAGER" | "USER",
           divisionId: user.divisionId,
-          divisionName: user.division.name,
+          divisionName: user.division?.name ?? "",
         };
       },
     }),
@@ -38,19 +36,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = (user as any).role;
-        token.divisionId = (user as any).divisionId;
-        token.divisionName = (user as any).divisionName;
+        token.role = user.role;
+        token.divisionId = user.divisionId;
+        token.divisionName = user.divisionName;
       }
       return token;
     },
     session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string;
-        (session.user as any).role = token.role;
-        (session.user as any).divisionId = token.divisionId;
-        (session.user as any).divisionName = token.divisionName;
-      }
+      session.user.id           = token.id as string;
+      session.user.role         = token.role as "ADMIN" | "MANAGER" | "USER";
+      session.user.divisionId   = token.divisionId as number;
+      session.user.divisionName = token.divisionName as string;
       return session;
     },
   },

@@ -3,15 +3,15 @@ import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET() {
-  const drivers = await prisma.driver.findMany({
-    orderBy: { name: "asc" },
-  });
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const drivers = await prisma.driver.findMany({ orderBy: { name: "asc" } });
   return NextResponse.json(drivers);
 }
 
 export async function POST(req: NextRequest) {
   const session = await auth();
-  if (!session || (session.user as any).role !== "ADMIN") {
+  if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const body = await req.json();

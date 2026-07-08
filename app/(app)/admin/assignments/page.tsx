@@ -1,7 +1,7 @@
 "use client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { todayWIB } from "@/lib/wib";
+import { todayWIB, fmtDateWIB } from "@/lib/wib";
 
 type Assignment = {
   id: number;
@@ -135,7 +135,7 @@ export default function AdminAssignmentsPage() {
               {assignments.map(a => (
                 <tr key={a.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                    {new Date(a.date + "T12:00:00+07:00").toLocaleDateString("id-ID", { weekday:"short", day:"numeric", month:"short", year:"numeric" })}
+                    {fmtDateWIB(a.date + "T12:00:00Z", { weekday:"short", day:"numeric", month:"short", year:"numeric" })}
                   </td>
                   <td className="px-4 py-3 font-medium text-gray-800">
                     {a.car.name}<br/>

@@ -44,7 +44,7 @@ export default function BookingsPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {data?.bookings?.length === 0 ? (
-                    <tr>                      <td colSpan={6} className="py-12 text-center text-gray-400">Tidak ada data booking</td></tr>
+                    <tr>                      <td colSpan={7} className="py-12 text-center text-gray-400">Tidak ada data booking</td></tr>
                   ) : (
                     data?.bookings?.map((b: any) => (
                       <tr key={b.id} className="hover:bg-gray-50 transition-colors">

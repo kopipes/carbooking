@@ -56,7 +56,7 @@ export default function AdminUsersPage() {
 
   function startEdit(u: User) {
     setEditId(u.id);
-    setForm({ name: u.name, email: u.email, password: "", role: u.role, phone: u.phone ?? "", divisionId: "" });
+    setForm({ name: u.name, email: u.email, password: "", role: u.role, phone: u.phone ?? "", divisionId: String((u as any).divisionId ?? "") });
     setShowForm(true);
   }
 

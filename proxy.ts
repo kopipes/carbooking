@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+// NextAuth v5 stores an encrypted JWE session token — we can only check existence, not decode role
+// Role-based guards for admin/manager routes are enforced in each API route and page via auth()
+// The proxy only handles: redirect unauthenticated users, allow public routes
 function hasSessionToken(req: NextRequest) {
   return (
     !!req.cookies.get("authjs.session-token")?.value ||
@@ -8,14 +11,10 @@ function hasSessionToken(req: NextRequest) {
   );
 }
 
-function getRoleFromCookie(req: NextRequest) {
-  return req.cookies.get("authjs.user-role")?.value ?? null;
-}
-
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Always allow — public, static, auth internals
+  // Always allow public and auth-internal routes
   if (
     pathname === "/" ||
     pathname === "/login" ||
@@ -27,26 +26,15 @@ export function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const loggedIn = hasSessionToken(req);
-
-  if (!loggedIn) {
+  // Redirect unauthenticated users to login
+  if (!hasSessionToken(req)) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  const role = getRoleFromCookie(req);
-
-  // Admin-only routes — only block if we know the role
-  if (pathname.startsWith("/admin") && role && role !== "ADMIN") {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
-  }
-
-  // Manager+ routes — only block if we know the role
-  if (pathname.startsWith("/manager") && role === "USER") {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
-  }
-
+  // Role-based guards (admin/manager) are enforced server-side in API routes and page components
+  // The encrypted JWE token cannot be decoded here without the secret
   return NextResponse.next();
 }
 

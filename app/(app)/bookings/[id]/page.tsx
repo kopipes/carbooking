@@ -3,29 +3,15 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { fmtWIB, fmtTimeWIB, toWIBDateStr } from "@/lib/wib";
-
-const TIME_SLOTS = [
-  { label: "Pagi",  emoji: "🌅", start: "07:00", end: "12:00" },
-  { label: "Siang", emoji: "☀️", start: "12:00", end: "15:00" },
-  { label: "Sore",  emoji: "🌤️", start: "15:00", end: "18:00" },
-  { label: "Malam", emoji: "🌙", start: "18:00", end: "22:00" },
-];
-
-function getSlot(startTime: string) {
-  const wibHour = new Date(new Date(startTime).getTime() + 7 * 3600000).getUTCHours();
-  const wibMin  = new Date(new Date(startTime).getTime() + 7 * 3600000).getUTCMinutes();
-  const hm = `${String(wibHour).padStart(2,"0")}:${String(wibMin).padStart(2,"0")}`;
-  return TIME_SLOTS.find(s => s.start === hm) ?? null;
-}
+import { fmtWIB, getSlotLabel } from "@/lib/wib";
 
 export default function BookingDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id }     = useParams<{ id: string }>();
   const { data: session } = useSession();
-  const router = useRouter();
-  const qc = useQueryClient();
-  const role   = (session?.user as any)?.role;
-  const userId = (session?.user as any)?.id;
+  const router     = useRouter();
+  const qc         = useQueryClient();
+  const role       = session?.user?.role;
+  const userId     = session?.user?.id;
 
   const { data: booking, isLoading } = useQuery({
     queryKey: ["booking", id],
@@ -53,7 +39,7 @@ export default function BookingDetailPage() {
   const isOwner   = String(booking.userId) === String(userId);
   const canEdit   = isOwner || role === "ADMIN";
   const canDelete = isOwner || role === "ADMIN";
-  const slot = getSlot(booking.startTime);
+  const slotLabel = booking?.startTime ? getSlotLabel(booking.startTime) : null;
 
   return (
     <div className="max-w-xl mx-auto space-y-5">
@@ -80,10 +66,9 @@ export default function BookingDetailPage() {
 
         {/* Time info */}
         <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 space-y-2 text-sm">
-          {slot && (
+          {slotLabel && (
             <div className="flex items-center gap-2 font-semibold text-blue-800">
-              <span className="text-xl">{slot.emoji}</span>
-              <span>{slot.label}</span>
+              <span>{slotLabel}</span>
             </div>
           )}
           <div className="grid grid-cols-2 gap-2">

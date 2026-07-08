@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { fmtWIB, toWIBDateStr } from "@/lib/wib";
+import { fmtWIB, getSlotLabel } from "@/lib/wib";
 
 async function getDashboardData(userId: number, role: string) {
   const isAdmin = role === "ADMIN" || role === "MANAGER";
@@ -19,7 +19,7 @@ async function getDashboardData(userId: number, role: string) {
       take: 10,
       include: {
         user: { select: { name: true } },
-        car: { select: { name: true, plate: true } },
+        car:  { select: { name: true, plate: true } },
       },
     }),
     prisma.car.count({ where: { status: "AVAILABLE" } }),
@@ -27,23 +27,10 @@ async function getDashboardData(userId: number, role: string) {
   return { myUpcoming, recentBookings, availableCars };
 }
 
-const TIME_SLOTS = [
-  { label: "Pagi",  emoji: "🌅", startH: 7  },
-  { label: "Siang", emoji: "☀️", startH: 12 },
-  { label: "Sore",  emoji: "🌤️", startH: 15 },
-  { label: "Malam", emoji: "🌙", startH: 18 },
-];
-
-function getSlotLabel(startTime: Date) {
-  const wibH = new Date(new Date(startTime).getTime() + 7 * 3600000).getUTCHours();
-  const slot = TIME_SLOTS.find(s => s.startH === wibH);
-  return slot ? `${slot.emoji} ${slot.label}` : null;
-}
-
 export default async function DashboardPage() {
   const session = await auth();
-  const userId = parseInt((session?.user as any)?.id);
-  const role   = (session?.user as any)?.role ?? "USER";
+  const userId  = parseInt(session!.user.id);
+  const role    = session!.user.role ?? "USER";
   const { myUpcoming, recentBookings, availableCars } = await getDashboardData(userId, role);
 
   return (
