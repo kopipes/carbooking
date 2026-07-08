@@ -178,17 +178,37 @@ export default function CalendarPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-800">Kalender</h1>
-        <div className="flex items-center gap-2">
-          <button onClick={prevWeek} className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm hover:bg-gray-50">&#8249; Prev</button>
-          <button onClick={goToday}  className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm hover:bg-gray-50">Hari ini</button>
-          <button onClick={nextWeek} className="px-3 py-1.5 rounded-lg border border-gray-200 text-sm hover:bg-gray-50">Next &#8250;</button>
+        <div className="flex items-center gap-1.5">
+          <button onClick={prevWeek} className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-sm hover:bg-gray-50">&#8249;</button>
+          <button onClick={goToday}  className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-sm hover:bg-gray-50">Hari ini</button>
+          <button onClick={nextWeek} className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-sm hover:bg-gray-50">&#8250;</button>
         </div>
       </div>
 
       <div className="flex items-center gap-4 text-xs text-gray-500 flex-wrap">
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-500 inline-block" /> Terboking — klik untuk detail</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-100 border border-blue-300 inline-block" /> Hover — klik untuk booking</span>
-        <span className="text-gray-400">Semua waktu dalam WIB</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-500 inline-block" /> Terboking</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-100 border border-blue-300 inline-block" /> Tap/hover untuk booking</span>
+        <span className="text-gray-400">WIB</span>
+      </div>
+
+      {/* Mobile day strip */}
+      <div className="md:hidden flex gap-1 overflow-x-auto pb-1 -mx-1 px-1">
+        {weekDays.map(d => {
+          const ds = toWIBDateStr(d);
+          const parts = ds.split("-").map(Number);
+          const dayOfWeek = new Date(Date.UTC(parts[0], parts[1]-1, parts[2])).getUTCDay();
+          const isToday = ds === todayStr;
+          const hasBookings = (byDate[ds] ?? []).length > 0;
+          return (
+            <a key={ds} href={`#day-${ds}`}
+              className={`shrink-0 flex flex-col items-center px-3 py-2 rounded-xl border transition-colors text-xs
+                ${isToday ? "bg-blue-600 text-white border-blue-600" : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"}`}>
+              <span className="font-medium">{DAYS_ID[dayOfWeek]}</span>
+              <span className={`text-sm font-bold ${isToday ? "text-white" : "text-gray-800"}`}>{parts[2]}</span>
+              {hasBookings && <span className={`w-1.5 h-1.5 rounded-full mt-0.5 ${isToday ? "bg-white" : "bg-blue-500"}`} />}
+            </a>
+          );
+        })}
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
@@ -198,6 +218,7 @@ export default function CalendarPage() {
             const s = fromStr.split("-"); const e = toStr.split("-");
             return `${parseInt(s[2])} ${MONTHS_ID[parseInt(s[1])-1]} – ${parseInt(e[2])} ${MONTHS_ID[parseInt(e[1])-1]} ${e[0]}`;
           })()}
+          <span className="ml-2 text-xs text-gray-400 font-normal md:hidden">← geser →</span>
         </div>
 
         <div className="overflow-x-auto">
@@ -343,11 +364,14 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* Hover tooltip modal */}
+      {/* Tooltip — smart positioning */}
       {tooltip && (
         <div
           className="fixed z-50 bg-white border border-gray-200 rounded-xl shadow-xl p-4 w-72 pointer-events-auto"
-          style={{ left: Math.min(tooltip.x, window.innerWidth - 300), top: tooltip.y }}
+          style={{
+            left: Math.max(8, Math.min(tooltip.x, (typeof window !== "undefined" ? window.innerWidth : 400) - 296)),
+            top:  Math.max(8, Math.min(tooltip.y, (typeof window !== "undefined" ? window.innerHeight : 600) - 320)),
+          }}
           onMouseEnter={keepTooltip}
           onMouseLeave={hideTooltip}
         >

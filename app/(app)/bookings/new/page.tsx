@@ -166,11 +166,9 @@ function NewBookingForm() {
 
           {/* Duration info */}
           {form.startTime && form.endTime && durationMin > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 text-sm flex items-center gap-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 text-sm flex flex-wrap items-center gap-x-4 gap-y-1">
               <div><span className="text-gray-500">Mulai:</span> <span className="font-semibold">{form.startTime} WIB</span></div>
-              <div className="text-gray-300">|</div>
               <div><span className="text-gray-500">Selesai:</span> <span className="font-semibold">{form.endTime} WIB</span></div>
-              <div className="text-gray-300">|</div>
               <div><span className="text-gray-500">Durasi:</span> <span className="font-semibold">
                 {durationMin >= 60
                   ? `${Math.floor(durationMin/60)} jam${durationMin%60>0 ? ` ${durationMin%60} mnt` : ""}`

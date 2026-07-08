@@ -45,7 +45,7 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-3 sm:gap-4">
         <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
           <div className="text-2xl font-bold text-blue-600">{availableCars}</div>
           <div className="text-xs text-gray-500 mt-1">Kendaraan Tersedia</div>
@@ -72,7 +72,7 @@ export default async function DashboardPage() {
             <div className="divide-y divide-gray-50">
               {myUpcoming.map(b => (
                 <Link key={b.id} href={`/bookings/${b.id}`} className="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors">
-                  <div>
+                  <div className="min-w-0 flex-1 mr-2">
                     <p className="text-sm font-medium text-gray-800">{b.title}</p>
                     <p className="text-xs text-gray-500">
                       {b.car.name} · {fmtWIB(b.startTime, { weekday:"short", day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" })} WIB

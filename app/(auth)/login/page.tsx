@@ -70,7 +70,7 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold text-blue-600">CarBook</h1>
           <p className="text-gray-500 mt-1">Office Car Booking System</p>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
           <h2 className="text-xl font-semibold text-gray-800 mb-6">Sign in to your account</h2>
           <Suspense fallback={<div className="text-sm text-gray-400">Loading...</div>}>
             <LoginForm />
