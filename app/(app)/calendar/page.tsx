@@ -158,7 +158,20 @@ export default function CalendarPage() {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">Kalender</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Kalender</h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {(() => {
+              const s = fromStr.split("-"); const e = toStr.split("-");
+              const startMonth = MONTHS_ID[parseInt(s[1]) - 1];
+              const endMonth   = MONTHS_ID[parseInt(e[1]) - 1];
+              const year       = e[0];
+              return startMonth === endMonth
+                ? `${startMonth} ${year}`
+                : `${startMonth} – ${endMonth} ${year}`;
+            })()}
+          </p>
+        </div>
         <div className="flex items-center gap-1.5">
           <button onClick={prevWeek} className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-sm hover:bg-gray-50">&#8249;</button>
           <button onClick={goToday}  className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-sm hover:bg-gray-50">Hari ini</button>
