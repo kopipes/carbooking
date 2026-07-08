@@ -33,7 +33,20 @@ export async function GET(req: NextRequest) {
     prisma.booking.count({ where }),
   ]);
 
-  return NextResponse.json({ bookings, total, page, limit, pages: Math.ceil(total / limit) });
+  // Attach driver assignment for each booking's WIB date
+  const bookingsWithDriver = await Promise.all(
+    bookings.map(async (b) => {
+      const bookingDate = new Date(new Date(b.startTime).getTime() + 7 * 3600000)
+        .toISOString().split("T")[0];
+      const assignment = await prisma.carAssignment.findUnique({
+        where: { carId_date: { carId: b.carId, date: bookingDate } },
+        select: { driver: { select: { name: true, phone: true } } },
+      });
+      return { ...b, driver: assignment?.driver ?? null };
+    })
+  );
+
+  return NextResponse.json({ bookings: bookingsWithDriver, total, page, limit, pages: Math.ceil(total / limit) });
 }
 
 export async function POST(req: NextRequest) {

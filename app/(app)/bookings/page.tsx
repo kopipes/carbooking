@@ -2,20 +2,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { toWIBDateStr, fmtDateWIB, fmtTimeWIB } from "@/lib/wib";
-
-const TIME_SLOTS = [
-  { label: "Pagi",  emoji: "🌅", startH: 7  },
-  { label: "Siang", emoji: "☀️", startH: 12 },
-  { label: "Sore",  emoji: "🌤️", startH: 15 },
-  { label: "Malam", emoji: "🌙", startH: 18 },
-];
-
-function getSlotLabel(startTime: string) {
-  const wibH = new Date(new Date(startTime).getTime() + 7 * 3600000).getUTCHours();
-  const slot = TIME_SLOTS.find(s => s.startH === wibH);
-  return slot ? `${slot.emoji} ${slot.label}` : "⏰ Custom";
-}
+import { fmtDateWIB, fmtTimeWIB } from "@/lib/wib";
 
 export default function BookingsPage() {
   const [page, setPage] = useState(1);
@@ -47,32 +34,41 @@ export default function BookingsPage() {
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="text-left px-4 py-3 text-gray-600 font-medium">Keperluan</th>
-                    <th className="text-left px-4 py-3 text-gray-600 font-medium">Kendaraan</th>
                     <th className="text-left px-4 py-3 text-gray-600 font-medium">Dipesan oleh</th>
                     <th className="text-left px-4 py-3 text-gray-600 font-medium">Tanggal</th>
-                    <th className="text-left px-4 py-3 text-gray-600 font-medium">Slot</th>
                     <th className="text-left px-4 py-3 text-gray-600 font-medium">Jam (WIB)</th>
+                    <th className="text-left px-4 py-3 text-gray-600 font-medium">Kendaraan</th>
+                    <th className="text-left px-4 py-3 text-gray-600 font-medium">Driver</th>
                     <th className="px-4 py-3"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {data?.bookings?.length === 0 ? (
-                    <tr><td colSpan={7} className="py-12 text-center text-gray-400">Tidak ada data booking</td></tr>
+                    <tr>                      <td colSpan={6} className="py-12 text-center text-gray-400">Tidak ada data booking</td></tr>
                   ) : (
                     data?.bookings?.map((b: any) => (
                       <tr key={b.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-4 py-3 font-medium text-gray-800">{b.title}</td>
-                        <td className="px-4 py-3 text-gray-600">
-                          {b.car.name}<br/>
-                          <span className="text-xs text-gray-400">{b.car.plate}</span>
-                        </td>
                         <td className="px-4 py-3 text-gray-600">{b.user.name}</td>
                         <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                           {fmtDateWIB(b.startTime, { weekday:"short", day:"numeric", month:"short", year:"numeric" })}
                         </td>
-                        <td className="px-4 py-3 text-gray-700 whitespace-nowrap font-medium">{getSlotLabel(b.startTime)}</td>
                         <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                           {fmtTimeWIB(b.startTime)} – {fmtTimeWIB(b.endTime)}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {b.car.name}<br/>
+                          <span className="text-xs text-gray-400">{b.car.plate}</span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {b.driver ? (
+                            <div>
+                              <p className="font-medium text-gray-800 text-xs">{b.driver.name}</p>
+                              {b.driver.phone && <p className="text-xs text-gray-400">{b.driver.phone}</p>}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-full">Belum ditugaskan</span>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <Link href={`/bookings/${b.id}`} className="text-blue-600 hover:underline text-xs">Detail</Link>
