@@ -172,7 +172,37 @@ export default function CalendarPage() {
             })()}
           </p>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+          {/* Month & Year picker */}
+          <select
+            value={`${toWIBDateStr(base).split("-")[0]}-${toWIBDateStr(base).split("-")[1]}`}
+            onChange={e => {
+              const [y, m] = e.target.value.split("-").map(Number);
+              const d = new Date(base);
+              d.setFullYear(y);
+              d.setMonth(m - 1);
+              d.setDate(1);
+              setBase(d);
+            }}
+            className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {(() => {
+              const opts = [];
+              const now = new Date();
+              // Show 6 months back and 12 months ahead
+              for (let i = -6; i <= 12; i++) {
+                const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, "0");
+                opts.push(
+                  <option key={`${y}-${m}`} value={`${y}-${m}`}>
+                    {MONTHS_ID[d.getMonth()]} {y}
+                  </option>
+                );
+              }
+              return opts;
+            })()}
+          </select>
           <button onClick={prevWeek} className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-sm hover:bg-gray-50">&#8249;</button>
           <button onClick={goToday}  className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-sm hover:bg-gray-50">Hari ini</button>
           <button onClick={nextWeek} className="px-2.5 py-1.5 rounded-lg border border-gray-200 text-sm hover:bg-gray-50">&#8250;</button>
