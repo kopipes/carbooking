@@ -13,14 +13,29 @@ const ROLES = ["USER", "MANAGER", "ADMIN"];
 export default function AdminUsersPage() {
   const qc = useQueryClient();
   const blank = { name: "", email: "", password: "", role: "USER", phone: "", divisionId: "" };
-  const [form, setForm] = useState(blank);
+  const [form, setForm]     = useState(blank);
   const [editId, setEditId] = useState<number | null>(null);
-  const [error, setError] = useState("");
+  const [error, setError]   = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [search, setSearch] = useState("");
 
   const { data: users, isLoading } = useQuery<User[]>({
     queryKey: ["users-admin"],
     queryFn: () => fetch("/api/users").then((r) => r.json()),
+  });
+
+  // Client-side search filter
+  const filteredUsers = (users ?? []).filter(u => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (
+      u.name.toLowerCase().includes(q) ||
+      u.email.toLowerCase().includes(q) ||
+      u.division?.name.toLowerCase().includes(q) ||
+      u.division?.code.toLowerCase().includes(q) ||
+      (u.phone ?? "").toLowerCase().includes(q) ||
+      u.role.toLowerCase().includes(q)
+    );
   });
 
   const { data: divisions } = useQuery<{ id: number; name: string; code: string }[]>({
@@ -76,6 +91,25 @@ export default function AdminUsersPage() {
         >
           {showForm ? "Cancel" : "+ Add User"}
         </button>
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+        </svg>
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Cari nama, email, divisi, role..."
+          className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        {search && (
+          <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            ✕
+          </button>
+        )}
       </div>
 
       {showForm && (
@@ -161,7 +195,11 @@ export default function AdminUsersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {users?.map((u) => (
+              {filteredUsers.length === 0 ? (
+                <tr><td colSpan={6} className="py-10 text-center text-gray-400">
+                  {search ? `Tidak ada hasil untuk "${search}"` : "Belum ada user"}
+                </td></tr>
+              ) : filteredUsers.map((u) => (
                 <tr key={u.id} className={`hover:bg-gray-50 ${!u.active ? "opacity-50" : ""}`}>
                   <td className="px-4 py-3 font-medium text-gray-800">{u.name}</td>
                   <td className="px-4 py-3 text-gray-600">{u.email}</td>

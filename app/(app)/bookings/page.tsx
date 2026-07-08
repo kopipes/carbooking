@@ -3,17 +3,27 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { fmtDateWIB, fmtTimeWIB } from "@/lib/wib";
+import { useDebounce } from "@/lib/useDebounce";
 
 export default function BookingsPage() {
-  const [page, setPage] = useState(1);
+  const [page, setPage]     = useState(1);
+  const [search, setSearch] = useState("");
+  const debouncedSearch     = useDebounce(search, 300);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["bookings", page],
+    queryKey: ["bookings", page, debouncedSearch],
     queryFn: async () => {
-      const res = await fetch(`/api/bookings?page=${page}&limit=10`);
+      const params = new URLSearchParams({ page: String(page), limit: "10" });
+      if (debouncedSearch) params.set("q", debouncedSearch);
+      const res = await fetch(`/api/bookings?${params}`);
       return res.json();
     },
   });
+
+  function handleSearch(val: string) {
+    setSearch(val);
+    setPage(1);
+  }
 
   return (
     <div className="space-y-5">
@@ -22,6 +32,25 @@ export default function BookingsPage() {
         <Link href="/bookings/new" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
           + Booking Baru
         </Link>
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+        </svg>
+        <input
+          type="text"
+          value={search}
+          onChange={e => handleSearch(e.target.value)}
+          placeholder="Cari keperluan, kendaraan, nama pemesan..."
+          className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        {search && (
+          <button onClick={() => handleSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            ✕
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
@@ -44,7 +73,11 @@ export default function BookingsPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {data?.bookings?.length === 0 ? (
-                    <tr>                      <td colSpan={7} className="py-12 text-center text-gray-400">Tidak ada data booking</td></tr>
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-gray-400">
+                        {debouncedSearch ? `Tidak ada hasil untuk "${debouncedSearch}"` : "Tidak ada data booking"}
+                      </td>
+                    </tr>
                   ) : (
                     data?.bookings?.map((b: any) => (
                       <tr key={b.id} className="hover:bg-gray-50 transition-colors">
