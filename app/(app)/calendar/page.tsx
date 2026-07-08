@@ -1,13 +1,11 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import { toWIBDateStr, wibToUTC, fmtWIB, wibHourFloat } from "@/lib/wib";
 
 interface TooltipData {
   booking: any;
-  x: number;
-  y: number;
 }
 
 const HOUR_START = 7;   // 07:00 WIB
@@ -87,7 +85,6 @@ export default function CalendarPage() {
   const [base, setBase]       = useState(new Date());
   const [hovered, setHovered] = useState<{ date: string; hour: number } | null>(null);
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
-  const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const weekDays = getWeekDays(base);
   const fromStr  = toWIBDateStr(weekDays[0]);
@@ -154,24 +151,8 @@ export default function CalendarPage() {
     router.push(`/bookings/new?date=${dateStr}&customStart=${toHM(hour)}&customEnd=${toHM(endHour)}`);
   }, [router]);
 
-  const handleBookingClick = useCallback((id: number) => {
-    router.push(`/bookings/${id}`);
-  }, [router]);
-
-  function showTooltip(booking: any, e: React.MouseEvent) {
-    if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const scrollY = window.scrollY;
-    setTooltip({ booking, x: rect.right + 8, y: rect.top + scrollY });
-  }
-
-  function hideTooltip() {
-    tooltipTimer.current = setTimeout(() => setTooltip(null), 150);
-  }
-
-  function keepTooltip() {
-    if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
-  }
+  function openModal(booking: any) { setTooltip({ booking }); }
+  function closeModal() { setTooltip(null); }
 
   return (
     <div className="space-y-4">
@@ -186,8 +167,8 @@ export default function CalendarPage() {
       </div>
 
       <div className="flex items-center gap-4 text-xs text-gray-500 flex-wrap">
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-500 inline-block" /> Terboking</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-100 border border-blue-300 inline-block" /> Tap/hover untuk booking</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-500 inline-block" /> Terboking — klik untuk pilihan</span>
+        <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-100 border border-blue-300 inline-block" /> Klik untuk booking baru</span>
         <span className="text-gray-400">WIB</span>
       </div>
 
@@ -316,16 +297,7 @@ export default function CalendarPage() {
                         <div
                           key={b.id}
                           style={{ top, height, width, left, position: "absolute", zIndex: 10 }}
-                          onClick={e => {
-                            e.stopPropagation();
-                            // Click on booking block → open new booking at same time
-                            const dateStr = toWIBDateStr(new Date(b.raw.startTime));
-                            const startH = Math.floor(b.startH);
-                            const startM = Math.round((b.startH % 1) * 60);
-                            router.push(`/bookings/new?date=${dateStr}&customStart=${toHM(startH, startM)}&customEnd=${toHM(Math.floor(b.endH), Math.round((b.endH % 1) * 60))}`);
-                          }}
-                          onMouseEnter={e => { e.stopPropagation(); showTooltip(b.raw, e); }}
-                          onMouseLeave={e => { e.stopPropagation(); hideTooltip(); }}
+                          onClick={e => { e.stopPropagation(); openModal(b.raw); }}
                           className="rounded-md bg-blue-500 border border-blue-600 text-white px-1.5 py-1 cursor-pointer
                             hover:bg-blue-600 hover:shadow-md transition-all overflow-hidden"
                         >
@@ -364,74 +336,105 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* Tooltip — smart positioning */}
+      {/* Booking info modal — centered, two action buttons */}
       {tooltip && (
-        <div
-          className="fixed z-50 bg-white border border-gray-200 rounded-xl shadow-xl p-4 w-72 pointer-events-auto"
-          style={{
-            left: Math.max(8, Math.min(tooltip.x, (typeof window !== "undefined" ? window.innerWidth : 400) - 296)),
-            top:  Math.max(8, Math.min(tooltip.y, (typeof window !== "undefined" ? window.innerHeight : 600) - 320)),
-          }}
-          onMouseEnter={keepTooltip}
-          onMouseLeave={hideTooltip}
-        >
-          <h3 className="font-semibold text-gray-800 text-sm leading-tight mb-1">{tooltip.booking.title}</h3>
-          {tooltip.booking.description && (
-            <p className="text-xs text-gray-500 mb-3">{tooltip.booking.description}</p>
-          )}
-          <div className="space-y-1.5 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="text-gray-400 w-16">Kendaraan</span>
-              <span className="font-medium text-gray-700">{tooltip.booking.car?.name} <span className="text-gray-400">({tooltip.booking.car?.plate})</span></span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-gray-400 w-16">Dipesan</span>
-              <span className="font-medium text-gray-700">{tooltip.booking.user?.name}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-gray-400 w-16">Mulai</span>
-              <span className="font-medium text-gray-700">
-                {fmtWIB(tooltip.booking.startTime, { weekday:"short", day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" })} WIB
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-gray-400 w-16">Selesai</span>
-              <span className="font-medium text-gray-700">
-                {fmtWIB(tooltip.booking.endTime, { hour:"2-digit", minute:"2-digit" })} WIB
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-gray-400 w-16">Durasi</span>
-              <span className="font-medium text-gray-700">
-                {tooltip.booking.durationMin >= 60
-                  ? `${Math.floor(tooltip.booking.durationMin/60)} jam${tooltip.booking.durationMin%60>0 ? ` ${tooltip.booking.durationMin%60} mnt` : ""}`
-                  : `${tooltip.booking.durationMin} menit`}
-              </span>
-            </div>
-            {tooltip.booking.driver && (
-              <div className="flex items-start gap-2 pt-1.5 mt-1.5 border-t border-gray-100">
-                <span className="text-gray-400 w-16">Driver</span>
-                <div>
-                  <span className="font-medium text-green-700">{tooltip.booking.driver.name}</span>
-                  {tooltip.booking.driver.phone && (
-                    <span className="text-gray-400 ml-1">{tooltip.booking.driver.phone}</span>
-                  )}
-                </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          onClick={closeModal}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm pointer-events-auto"
+            onClick={e => e.stopPropagation()}>
+
+            {/* Modal header */}
+            <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3 border-b border-gray-100">
+              <div>
+                <h3 className="font-bold text-gray-800 text-base leading-tight">{tooltip.booking.title}</h3>
+                {tooltip.booking.description && (
+                  <p className="text-xs text-gray-500 mt-0.5">{tooltip.booking.description}</p>
+                )}
               </div>
-            )}
-            {!tooltip.booking.driver && (
-              <div className="flex items-center gap-2 pt-1.5 mt-1.5 border-t border-gray-100">
-                <span className="text-gray-400 w-16">Driver</span>
-                <span className="text-yellow-600 text-xs">Belum ditugaskan</span>
+              <button onClick={closeModal}
+                className="text-gray-400 hover:text-gray-600 transition-colors shrink-0 mt-0.5">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Booking info */}
+            <div className="px-5 py-4 space-y-2 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400 w-16 shrink-0">Kendaraan</span>
+                <span className="font-medium text-gray-700">{tooltip.booking.car?.name}
+                  <span className="text-gray-400 font-normal"> · {tooltip.booking.car?.plate}</span>
+                </span>
               </div>
-            )}
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400 w-16 shrink-0">Pemesan</span>
+                <span className="font-medium text-gray-700">{tooltip.booking.user?.name}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400 w-16 shrink-0">Mulai</span>
+                <span className="font-medium text-gray-700">
+                  {fmtWIB(tooltip.booking.startTime, { weekday:"short", day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" })} WIB
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400 w-16 shrink-0">Selesai</span>
+                <span className="font-medium text-gray-700">
+                  {fmtWIB(tooltip.booking.endTime, { hour:"2-digit", minute:"2-digit" })} WIB
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-400 w-16 shrink-0">Durasi</span>
+                <span className="font-medium text-gray-700">
+                  {tooltip.booking.durationMin >= 60
+                    ? `${Math.floor(tooltip.booking.durationMin/60)} jam${tooltip.booking.durationMin%60>0 ? ` ${tooltip.booking.durationMin%60} mnt` : ""}`
+                    : `${tooltip.booking.durationMin} menit`}
+                </span>
+              </div>
+              <div className="flex items-start gap-2 pt-2 mt-1 border-t border-gray-100">
+                <span className="text-gray-400 w-16 shrink-0">Driver</span>
+                {tooltip.booking.driver ? (
+                  <div>
+                    <span className="font-medium text-green-700">{tooltip.booking.driver.name}</span>
+                    {tooltip.booking.driver.phone && (
+                      <span className="text-gray-400 text-xs ml-1">· {tooltip.booking.driver.phone}</span>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-yellow-600 text-xs bg-yellow-50 px-2 py-0.5 rounded-full">Belum ditugaskan</span>
+                )}
+              </div>
+            </div>
+
+            {/* Two action buttons */}
+            <div className="px-5 pb-5 grid grid-cols-2 gap-3">
+              <button
+                onClick={() => {
+                  closeModal();
+                  const b = tooltip.booking;
+                  const startH = wibHourOf(b.startTime);
+                  const endH   = wibHourOf(b.endTime);
+                  const dateStr = toWIBDateStr(b.startTime);
+                  router.push(`/bookings/new?date=${dateStr}&customStart=${toHM(Math.floor(startH), Math.round((startH%1)*60))}&customEnd=${toHM(Math.floor(endH), Math.round((endH%1)*60))}`);
+                }}
+                className="flex flex-col items-center gap-1 bg-blue-50 border-2 border-blue-200 text-blue-700 py-3 rounded-xl text-sm font-medium hover:bg-blue-100 hover:border-blue-400 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Booking di Jam Ini
+              </button>
+              <button
+                onClick={() => { closeModal(); router.push(`/bookings/${tooltip.booking.id}`); }}
+                className="flex flex-col items-center gap-1 bg-gray-50 border-2 border-gray-200 text-gray-700 py-3 rounded-xl text-sm font-medium hover:bg-gray-100 hover:border-gray-400 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Lihat Detail
+              </button>
+            </div>
           </div>
-          <button
-            onClick={() => { setTooltip(null); handleBookingClick(tooltip.booking.id); }}
-            className="mt-3 w-full bg-blue-600 text-white py-1.5 rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors"
-          >
-            Lihat Detail
-          </button>
         </div>
       )}
     </div>
