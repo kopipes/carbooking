@@ -229,32 +229,40 @@ export default function CalendarPage() {
                   </div>
 
                   {/* Hourly grid — relative container */}
-                  <div className="relative" style={{ height: HOURS.length * ROW_H }}>
-
-                    {/* Hour cell backgrounds + hover */}
+                  <div
+                    className="relative"
+                    style={{ height: HOURS.length * ROW_H }}
+                    onMouseMove={e => {
+                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                      const y = e.clientY - rect.top;
+                      const h = Math.floor(y / ROW_H) + HOUR_START;
+                      const isPast = (ds < nowDate) || (ds === nowDate && h + 1 <= nowWIBH);
+                      if (!isPast && h >= HOUR_START && h < HOUR_END) {
+                        setHovered({ date: ds, hour: h });
+                      }
+                    }}
+                    onMouseLeave={() => setHovered(null)}
+                    onClick={e => {
+                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                      const y = e.clientY - rect.top;
+                      const h = Math.floor(y / ROW_H) + HOUR_START;
+                      const isPast = (ds < nowDate) || (ds === nowDate && h + 1 <= nowWIBH);
+                      if (!isPast) handleCellClick(ds, h);
+                    }}
+                  >
+                    {/* Hour cell backgrounds */}
                     {HOURS.map(h => {
                       const isPast = (ds < nowDate) || (ds === nowDate && h + 1 <= nowWIBH);
                       const isHov  = hovered?.date === ds && hovered?.hour === h;
-
                       return (
                         <div
                           key={h}
-                          style={{ top: (h - HOUR_START) * ROW_H, height: ROW_H }}
-                          className={`absolute w-full border-b border-gray-100 transition-colors
-                            ${isPast ? "bg-gray-50/60" : "cursor-pointer"}
-                            ${!isPast && isHov ? "bg-blue-100" : ""}
+                          style={{ top: (h - HOUR_START) * ROW_H, height: ROW_H, zIndex: 1 }}
+                          className={`absolute w-full border-b border-gray-100 transition-colors pointer-events-none
+                            ${isPast ? "bg-gray-50/60" : ""}
+                            ${!isPast && isHov ? "bg-blue-50/60" : ""}
                           `}
-                          onMouseEnter={() => !isPast && setHovered({ date: ds, hour: h })}
-                          onMouseLeave={() => setHovered(null)}
-                          onClick={() => !isPast && handleCellClick(ds, h)}
                         >
-                          {!isPast && isHov && (
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                              <span className="text-xs text-blue-500 font-medium bg-white/80 px-1.5 py-0.5 rounded shadow-sm">
-                                + {toHM(h)}
-                              </span>
-                            </div>
-                          )}
                           {/* Current time line */}
                           {isToday && Math.floor(nowWIBH) === h && (
                             <div
@@ -273,22 +281,26 @@ export default function CalendarPage() {
                       const clampedStart = Math.max(b.startH, HOUR_START);
                       const clampedEnd   = Math.min(b.endH,   HOUR_END);
                       if (clampedEnd <= clampedStart) return null;
-
                       const top    = (clampedStart - HOUR_START) * ROW_H;
                       const height = Math.max((clampedEnd - clampedStart) * ROW_H - 2, 20);
                       const width  = `calc(${100 / b.cols}% - 4px)`;
                       const left   = `calc(${(b.col / b.cols) * 100}% + 2px)`;
-
                       return (
                         <div
                           key={b.id}
                           style={{ top, height, width, left, position: "absolute", zIndex: 10 }}
-                          onClick={e => { e.stopPropagation(); handleBookingClick(b.id); }}
+                          onClick={e => {
+                            e.stopPropagation();
+                            // Click on booking block → open new booking at same time
+                            const dateStr = toWIBDateStr(new Date(b.raw.startTime));
+                            const startH = Math.floor(b.startH);
+                            const startM = Math.round((b.startH % 1) * 60);
+                            router.push(`/bookings/new?date=${dateStr}&customStart=${toHM(startH, startM)}&customEnd=${toHM(Math.floor(b.endH), Math.round((b.endH % 1) * 60))}`);
+                          }}
                           onMouseEnter={e => { e.stopPropagation(); showTooltip(b.raw, e); }}
                           onMouseLeave={e => { e.stopPropagation(); hideTooltip(); }}
                           className="rounded-md bg-blue-500 border border-blue-600 text-white px-1.5 py-1 cursor-pointer
                             hover:bg-blue-600 hover:shadow-md transition-all overflow-hidden"
-                          title={`${b.title} — ${b.carName}`}
                         >
                           <div className="text-xs font-semibold truncate leading-tight">{b.carName}</div>
                           <div className="text-xs opacity-80 truncate leading-tight">{b.title}</div>
@@ -300,6 +312,23 @@ export default function CalendarPage() {
                         </div>
                       );
                     })}
+
+                    {/* Hover pill — always on top, pointer-events-none */}
+                    {hovered?.date === ds && (() => {
+                      const h = hovered.hour;
+                      const isPast = (ds < nowDate) || (ds === nowDate && h + 1 <= nowWIBH);
+                      if (isPast) return null;
+                      return (
+                        <div
+                          style={{ top: (h - HOUR_START) * ROW_H, height: ROW_H, zIndex: 30 }}
+                          className="absolute w-full pointer-events-none flex items-end justify-center pb-1"
+                        >
+                          <span className="text-xs text-blue-700 font-semibold bg-white border border-blue-400 px-2 py-0.5 rounded-full shadow-md">
+                            + {toHM(h)}–{toHM(h + 1)} WIB
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               );
@@ -316,15 +345,7 @@ export default function CalendarPage() {
           onMouseEnter={keepTooltip}
           onMouseLeave={hideTooltip}
         >
-          <div className="flex items-start justify-between gap-2 mb-3">
-            <h3 className="font-semibold text-gray-800 text-sm leading-tight">{tooltip.booking.title}</h3>
-            <button
-              onClick={() => handleBookingClick(tooltip.booking.id)}
-              className="text-xs text-blue-600 hover:underline shrink-0"
-            >
-              Detail →
-            </button>
-          </div>
+          <h3 className="font-semibold text-gray-800 text-sm leading-tight mb-1">{tooltip.booking.title}</h3>
           {tooltip.booking.description && (
             <p className="text-xs text-gray-500 mb-3">{tooltip.booking.description}</p>
           )}
@@ -376,7 +397,7 @@ export default function CalendarPage() {
             )}
           </div>
           <button
-            onClick={() => handleBookingClick(tooltip.booking.id)}
+            onClick={() => { setTooltip(null); handleBookingClick(tooltip.booking.id); }}
             className="mt-3 w-full bg-blue-600 text-white py-1.5 rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors"
           >
             Lihat Detail
