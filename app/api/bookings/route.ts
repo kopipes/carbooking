@@ -12,7 +12,8 @@ export async function GET(req: NextRequest) {
   const limit  = parseInt(searchParams.get("limit") ?? "10");
   const carId  = searchParams.get("carId") ? parseInt(searchParams.get("carId")!) : undefined;
   const q      = searchParams.get("q")?.trim() ?? "";
-  const userId = session.user.role === "USER" ? parseInt(session.user.id) : undefined;
+  const mine   = searchParams.get("mine") === "1";
+  const userId = mine ? parseInt(session.user.id) : undefined;
 
   const where: any = {};
   if (carId)  where.carId  = carId;

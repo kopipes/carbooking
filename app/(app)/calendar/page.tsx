@@ -98,10 +98,7 @@ export default function CalendarPage() {
       const startUTC = wibToUTC(fromStr, "00:00").toISOString();
       const endUTC   = wibToUTC(toStr,   "23:59").toISOString();
       const params   = new URLSearchParams({ limit: "200", page: "1" });
-      const [bookingRes, assignRes] = await Promise.all([
-        fetch(`/api/bookings?${params}`),
-        fetch(`/api/assignments?date=${fromStr}`), // get all for week by fetching each day
-      ]);
+      const bookingRes = await fetch(`/api/bookings?${params}`);
       const bookingList: any[] = (await bookingRes.json()).bookings ?? [];
 
       // Fetch all 7 days assignments in one parallel batch

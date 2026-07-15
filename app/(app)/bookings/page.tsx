@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { fmtDateWIB, fmtTimeWIB } from "@/lib/wib";
 import { useDebounce } from "@/lib/useDebounce";
@@ -9,15 +10,20 @@ export default function BookingsPage() {
   const [page, setPage]     = useState(1);
   const [search, setSearch] = useState("");
   const debouncedSearch     = useDebounce(search, 300);
+  const { data: session }   = useSession();
+  const isUser              = session?.user?.role === "USER";
 
   const { data, isLoading } = useQuery({
-    queryKey: ["bookings", page, debouncedSearch],
+    queryKey: ["bookings", page, debouncedSearch, isUser],
     queryFn: async () => {
       const params = new URLSearchParams({ page: String(page), limit: "10" });
       if (debouncedSearch) params.set("q", debouncedSearch);
+      // USER role only sees their own bookings in the list
+      if (isUser) params.set("mine", "1");
       const res = await fetch(`/api/bookings?${params}`);
       return res.json();
     },
+    enabled: session !== undefined,
   });
 
   function handleSearch(val: string) {
