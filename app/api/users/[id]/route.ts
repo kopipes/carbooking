@@ -36,12 +36,29 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   return NextResponse.json(user);
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { id } = await params;
-  await prisma.user.update({ where: { id: parseInt(id) }, data: { active: false } });
+  const userId = parseInt(id);
+
+  // Guard against invalid id
+  if (isNaN(userId)) {
+    return NextResponse.json({ error: "Invalid user id" }, { status: 400 });
+  }
+
+  // Prevent admin from deleting their own account
+  if (session.user.id === String(userId)) {
+    return NextResponse.json({ error: "Tidak bisa menghapus akun sendiri" }, { status: 400 });
+  }
+
+  // Cascade: delete bookings first then user, wrapped in transaction for atomicity
+  await prisma.$transaction([
+    prisma.booking.deleteMany({ where: { userId } }),
+    prisma.user.delete({ where: { id: userId } }),
+  ]);
+
   return NextResponse.json({ success: true });
 }

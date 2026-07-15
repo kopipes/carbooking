@@ -64,9 +64,13 @@ export default function AdminUsersPage() {
     onError: (e: any) => setError(e.message),
   });
 
-  const deactivate = useMutation({
-    mutationFn: (id: number) => fetch(`/api/users/${id}`, { method: "DELETE" }),
+  const deleteUser = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json()).error ?? "Gagal menghapus user");
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["users-admin"] }),
+    onError: (e: any) => alert(e.message),
   });
 
   function startEdit(u: User) {
@@ -217,14 +221,15 @@ export default function AdminUsersPage() {
                     >
                       Edit
                     </button>
-                    {u.active && (
-                      <button
-                        onClick={() => { if (confirm(`Nonaktifkan ${u.name}?`)) deactivate.mutate(u.id); }}
-                        className="text-sm text-red-500 font-medium hover:underline"
-                      >
-                        Nonaktifkan
-                      </button>
-                    )}
+                    <button
+                      onClick={() => {
+                        if (confirm(`Hapus permanen ${u.name}? Semua booking miliknya juga akan dihapus. Tindakan ini tidak bisa dibatalkan.`))
+                          deleteUser.mutate(u.id);
+                      }}
+                      className="text-sm text-red-600 font-medium hover:underline"
+                    >
+                      Hapus
+                    </button>
                   </div>
                 </div>
               ))}
@@ -261,14 +266,15 @@ export default function AdminUsersPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <button onClick={() => startEdit(u)} className="text-blue-600 hover:underline text-xs mr-3">Edit</button>
-                        {u.active && (
-                          <button
-                            onClick={() => { if (confirm(`Deactivate ${u.name}?`)) deactivate.mutate(u.id); }}
-                            className="text-red-500 hover:underline text-xs"
-                          >
-                            Deactivate
-                          </button>
-                        )}
+                        <button
+                          onClick={() => {
+                            if (confirm(`Hapus permanen ${u.name}? Semua booking miliknya juga akan dihapus. Tindakan ini tidak bisa dibatalkan.`))
+                              deleteUser.mutate(u.id);
+                          }}
+                          className="text-red-600 hover:underline text-xs"
+                        >
+                          Hapus
+                        </button>
                       </td>
                     </tr>
                   ))}
