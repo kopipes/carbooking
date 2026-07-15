@@ -37,8 +37,12 @@ export default function AdminDivisionsPage() {
   });
 
   const del = useMutation({
-    mutationFn: (id: number) => fetch(`/api/divisions/${id}`, { method: "DELETE" }),
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/divisions/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json()).error ?? "Gagal menghapus divisi");
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["divisions"] }),
+    onError: (e: any) => setError(e.message),
   });
 
   function startEdit(d: Division) {
