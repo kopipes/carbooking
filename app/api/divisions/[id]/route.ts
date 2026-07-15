@@ -19,6 +19,20 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { id } = await params;
-  await prisma.division.delete({ where: { id: parseInt(id) } });
+  const divisionId = parseInt(id);
+  if (isNaN(divisionId)) {
+    return NextResponse.json({ error: "Invalid division id" }, { status: 400 });
+  }
+
+  // Block delete if users are still assigned to this division
+  const userCount = await prisma.user.count({ where: { divisionId } });
+  if (userCount > 0) {
+    return NextResponse.json(
+      { error: `Tidak bisa menghapus divisi yang masih memiliki ${userCount} user` },
+      { status: 400 }
+    );
+  }
+
+  await prisma.division.delete({ where: { id: divisionId } });
   return NextResponse.json({ success: true });
 }

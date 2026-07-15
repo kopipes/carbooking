@@ -19,6 +19,16 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const { id } = await params;
-  await prisma.car.delete({ where: { id: parseInt(id) } });
+  const carId = parseInt(id);
+  if (isNaN(carId)) {
+    return NextResponse.json({ error: "Invalid car id" }, { status: 400 });
+  }
+
+  // Cascade: delete related records first (SQLite doesn't enforce FK cascade by default)
+  await prisma.$transaction([
+    prisma.carAssignment.deleteMany({ where: { carId } }),
+    prisma.booking.deleteMany({ where: { carId } }),
+    prisma.car.delete({ where: { id: carId } }),
+  ]);
   return NextResponse.json({ success: true });
 }
