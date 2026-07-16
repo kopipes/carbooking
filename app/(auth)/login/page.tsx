@@ -64,24 +64,17 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-blue-600">CarBook</h1>
-          <p className="text-gray-500 mt-1">Office Car Booking System</p>
+          <h1 className="text-3xl font-bold text-blue-600">Booking</h1>
+          <p className="text-gray-500 mt-1 text-sm">Sign in to book</p>
         </div>
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6">Sign in to your account</h2>
           <Suspense fallback={<div className="text-sm text-gray-400">Loading...</div>}>
             <LoginForm />
           </Suspense>
-          <div className="mt-6 pt-4 border-t border-gray-100">
-            <Link href="/" className="text-sm text-gray-500 hover:text-blue-600 transition-colors">
-              Back to public dashboard
-            </Link>
-          </div>
         </div>
-        <p className="text-center text-xs text-gray-400 mt-4">Demo: admin@company.com / admin123</p>
       </div>
     </div>
   );
