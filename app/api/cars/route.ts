@@ -8,7 +8,8 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const where: any = { status: "AVAILABLE" };
+  const all       = searchParams.get("all") === "1";
+  const where: any = all ? {} : { status: "AVAILABLE" };
   const date      = searchParams.get("date");
   const startTime = searchParams.get("startTime");
   const endTime   = searchParams.get("endTime");
@@ -24,7 +25,11 @@ export async function GET(req: NextRequest) {
     if (busyCarIds.length > 0) where.id = { notIn: busyCarIds };
   }
 
-  const cars = await prisma.car.findMany({ where, orderBy: { name: "asc" } });
+  const cars = await prisma.car.findMany({
+    where,
+    orderBy: { name: "asc" },
+    include: { defaultDriver: { select: { id: true, name: true, phone: true } } },
+  });
   return NextResponse.json(cars);
 }
 

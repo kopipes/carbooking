@@ -36,7 +36,13 @@ export async function GET(req: NextRequest) {
       take: limit,
       include: {
         user: { select: { name: true, email: true } },
-        car:  { select: { name: true, plate: true } },
+        car:  {
+          select: {
+            name:            true,
+            plate:           true,
+            defaultDriver:   { select: { name: true, phone: true } },
+          },
+        },
       },
     }),
     prisma.booking.count({ where }),
@@ -57,14 +63,18 @@ export async function GET(req: NextRequest) {
       })
     : [];
 
-  // Build lookup map: "carId_date" -> driver
+  // Build lookup map: "carId_date" -> assigned driver (per-day override)
   const driverMap = new Map<string, { name: string; phone: string | null } | null>();
   assignments.forEach(a => driverMap.set(`${a.carId}_${a.date}`, a.driver));
 
-  const bookingsWithDriver = bookings.map(b => ({
-    ...b,
-    driver: driverMap.get(`${b.carId}_${toWIBDateStr(b.startTime)}`) ?? null,
-  }));
+  // Resolver: per-day assignment > car default driver > null
+  const bookingsWithDriver = bookings.map(b => {
+    const dayDriver = driverMap.get(`${b.carId}_${toWIBDateStr(b.startTime)}`);
+    const driver    = dayDriver ?? b.car.defaultDriver ?? null;
+    // Strip defaultDriver from car payload so response shape stays clean
+    const { defaultDriver, ...carRest } = b.car;
+    return { ...b, car: carRest, driver };
+  });
 
   return NextResponse.json({ bookings: bookingsWithDriver, total, page, limit, pages: Math.ceil(total / limit) });
 }

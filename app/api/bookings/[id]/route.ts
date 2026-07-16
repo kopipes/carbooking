@@ -12,19 +12,24 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     where: { id: parseInt(id) },
     include: {
       user: { select: { name: true, email: true, division: { select: { name: true } } } },
-      car:  true,
+      car:  {
+        include: {
+          defaultDriver: { select: { id: true, name: true, phone: true, license: true } },
+        },
+      },
     },
   });
   if (!booking) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Fetch driver assignment for this booking's WIB date
-  const bookingDate  = toWIBDateStr(booking.startTime);
-  const assignment   = await prisma.carAssignment.findUnique({
+  // Resolve driver: per-day assignment overrides car default driver
+  const bookingDate = toWIBDateStr(booking.startTime);
+  const assignment  = await prisma.carAssignment.findUnique({
     where:   { carId_date: { carId: booking.carId, date: bookingDate } },
     include: { driver: { select: { id: true, name: true, phone: true, license: true } } },
   });
+  const driver = assignment?.driver ?? booking.car.defaultDriver ?? null;
 
-  return NextResponse.json({ ...booking, driver: assignment?.driver ?? null, bookingDate });
+  return NextResponse.json({ ...booking, driver, bookingDate });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

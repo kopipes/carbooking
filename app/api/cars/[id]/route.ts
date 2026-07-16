@@ -9,7 +9,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
   const { id } = await params;
   const body = await req.json();
-  const car = await prisma.car.update({ where: { id: parseInt(id) }, data: body });
+
+  // Whitelist allowed fields
+  const { name, plate, type, capacity, status, defaultDriverId } = body;
+  const data: any = {};
+  if (name     !== undefined) data.name     = name;
+  if (plate    !== undefined) data.plate    = plate;
+  if (type     !== undefined) data.type     = type;
+  if (capacity !== undefined) data.capacity = parseInt(capacity);
+  if (status   !== undefined) data.status   = status;
+  if (defaultDriverId !== undefined) {
+    data.defaultDriverId = defaultDriverId === null || defaultDriverId === "" ? null : parseInt(defaultDriverId);
+  }
+
+  const car = await prisma.car.update({
+    where: { id: parseInt(id) },
+    data,
+    include: { defaultDriver: { select: { id: true, name: true, phone: true } } },
+  });
   return NextResponse.json(car);
 }
 

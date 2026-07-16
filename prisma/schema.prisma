@@ -31,25 +31,28 @@ model Division {
 }
 
 model Car {
-  id          Int             @id @default(autoincrement())
-  name        String
-  plate       String          @unique
-  type        String
-  capacity    Int             @default(4)
-  status      CarStatus       @default(AVAILABLE)
-  bookings    Booking[]
-  assignments CarAssignment[]
+  id               Int             @id @default(autoincrement())
+  name             String
+  plate            String          @unique
+  type             String
+  capacity         Int             @default(4)
+  status           CarStatus       @default(AVAILABLE)
+  defaultDriverId  Int?
+  defaultDriver    Driver?         @relation("DefaultDriverCars", fields: [defaultDriverId], references: [id])
+  bookings         Booking[]
+  assignments      CarAssignment[]
 }
 
 model Driver {
-  id          Int             @id @default(autoincrement())
-  name        String
-  phone       String?
-  license     String?
-  active      Boolean         @default(true)
-  assignments CarAssignment[]
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  id            Int             @id @default(autoincrement())
+  name          String
+  phone         String?
+  license       String?
+  active        Boolean         @default(true)
+  assignments   CarAssignment[]
+  defaultCars   Car[]           @relation("DefaultDriverCars")
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 }
 
 model CarAssignment {

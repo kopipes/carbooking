@@ -14,7 +14,7 @@ export default function AdminCarsPage() {
 
   const { data: cars, isLoading } = useQuery<Car[]>({
     queryKey: ["cars-admin"],
-    queryFn: () => fetch("/api/cars").then((r) => r.json()),
+    queryFn: () => fetch("/api/cars?all=1").then((r) => r.json()),
   });
 
   const save = useMutation({
