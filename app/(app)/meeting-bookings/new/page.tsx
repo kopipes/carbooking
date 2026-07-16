@@ -1,12 +1,13 @@
 "use client";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import MeetingCalendar from "@/components/MeetingCalendar";
 import { todayWIB, wibToUTC } from "@/lib/wib";
 
 function NewMeetingBookingForm() {
   const router = useRouter();
+  const qc     = useQueryClient();
   const searchParams = useSearchParams();
 
   const [form, setForm] = useState({
@@ -69,6 +70,10 @@ function NewMeetingBookingForm() {
     setLoading(false);
     if (!res.ok) { setError((await res.json()).error ?? "Gagal membuat booking"); return; }
     const data = await res.json();
+    // Invalidate availability cache so calendar updates immediately
+    qc.invalidateQueries({ queryKey: ["meeting-availability"] });
+    qc.invalidateQueries({ queryKey: ["calendar-meeting-bookings"] });
+    qc.invalidateQueries({ queryKey: ["meeting-rooms-available"] });
     router.push(`/meeting-bookings/${data.id}`);
   }
 

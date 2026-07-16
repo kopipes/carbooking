@@ -1,12 +1,13 @@
 "use client";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import BookingCalendar from "@/components/BookingCalendar";
 import { todayWIB } from "@/lib/wib";
 
 function NewBookingForm() {
   const router = useRouter();
+  const qc     = useQueryClient();
   const searchParams = useSearchParams();
 
   const [form, setForm] = useState({
@@ -84,6 +85,9 @@ function NewBookingForm() {
     if (!res.ok) {
       setError(data.error ?? "Gagal membuat booking");
     } else {
+      // Invalidate availability cache so calendar updates immediately
+      qc.invalidateQueries({ queryKey: ["availability"] });
+      qc.invalidateQueries({ queryKey: ["calendar-bookings"] });
       router.push(`/bookings/${data.id}`);
     }
   }
