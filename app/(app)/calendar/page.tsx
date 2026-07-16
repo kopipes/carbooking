@@ -8,8 +8,8 @@ interface TooltipData {
   booking: any;
 }
 
-const HOUR_START = 7;   // 07:00 WIB
-const HOUR_END   = 22;  // 22:00 WIB
+const HOUR_START = 0;   // 00:00 WIB
+const HOUR_END   = 24;  // 24:00 WIB
 const HOURS      = Array.from({ length: HOUR_END - HOUR_START }, (_, i) => HOUR_START + i);
 const ROW_H      = 48;  // px per hour
 

@@ -78,9 +78,9 @@ function NewMeetingBookingForm() {
   }
 
   const timeOptions: string[] = [];
-  for (let h = 7; h <= 22; h++) {
+  for (let h = 0; h <= 23; h++) {
     timeOptions.push(`${String(h).padStart(2,"0")}:00`);
-    if (h < 22) timeOptions.push(`${String(h).padStart(2,"0")}:30`);
+    timeOptions.push(`${String(h).padStart(2,"0")}:30`);
   }
 
   return (

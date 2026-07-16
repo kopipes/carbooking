@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState, useCallback } from "react";
 import { toWIBDateStr, wibToUTC, fmtWIB, wibHourFloat } from "@/lib/wib";
 
-const HOUR_START = 7;
-const HOUR_END   = 22;
+const HOUR_START = 0;
+const HOUR_END   = 24;
 const HOURS      = Array.from({ length: HOUR_END - HOUR_START }, (_, i) => HOUR_START + i);
 const ROW_H      = 48;
 
