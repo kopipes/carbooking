@@ -5,9 +5,11 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 const navItems = [
-  { href: "/dashboard",        label: "Dashboard"    },
-  { href: "/bookings",         label: "Kendaraan"    },
-  { href: "/meeting-bookings", label: "Meeting Room" },
+  { href: "/dashboard",        label: "Dashboard"         },
+  { href: "/bookings",         label: "Kendaraan"         },
+  { href: "/calendar",         label: "Kalender Kendaraan"},
+  { href: "/meeting-bookings", label: "Meeting Room"      },
+  { href: "/meeting-calendar", label: "Kalender Meeting"  },
 ];
 
 const adminItems = [
