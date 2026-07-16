@@ -6,8 +6,8 @@ import Providers from "@/components/Providers";
 const geist = Geist({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Car Booking System",
-  description: "Office car booking and scheduling",
+  title: "Booking",
+  description: "Office booking system — kendaraan dan meeting room",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

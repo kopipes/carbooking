@@ -5,17 +5,18 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/calendar",  label: "Kalender"  },
-  { href: "/bookings",  label: "Booking"   },
+  { href: "/dashboard",        label: "Dashboard"    },
+  { href: "/bookings",         label: "Kendaraan"    },
+  { href: "/meeting-bookings", label: "Meeting Room" },
 ];
 
 const adminItems = [
-  { href: "/admin/users",       label: "Users"     },
-  { href: "/admin/divisions",   label: "Divisions" },
-  { href: "/admin/cars",        label: "Cars"      },
-  { href: "/admin/drivers",     label: "Drivers"   },
-  { href: "/admin/assignments", label: "Penugasan" },
+  { href: "/admin/users",         label: "Users"         },
+  { href: "/admin/divisions",     label: "Divisions"     },
+  { href: "/admin/cars",          label: "Cars"          },
+  { href: "/admin/drivers",       label: "Drivers"       },
+  { href: "/admin/assignments",   label: "Penugasan"     },
+  { href: "/admin/meeting-rooms", label: "Meeting Rooms" },
 ];
 
 export default function AppNav() {
@@ -32,7 +33,7 @@ export default function AppNav() {
       <nav className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
         {/* Logo */}
         <Link href="/dashboard" className="font-bold text-blue-600 text-lg shrink-0">
-          CarBook
+          Booking
         </Link>
 
         {/* Desktop nav */}
@@ -63,102 +64,84 @@ export default function AppNav() {
         {/* Desktop right */}
         <div className="hidden md:flex items-center gap-3 shrink-0">
           <Link href="/bookings/new"
-            className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm font-medium hover:bg-blue-700 transition-colors">
-            + Book a Car
+            className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+            + Kendaraan
           </Link>
-          <div className="text-sm text-gray-600">
-            {session?.user?.name}
-            <span className="ml-1 text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">{role}</span>
-          </div>
+          <Link href="/meeting-bookings/new"
+            className="bg-purple-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors">
+            + Ruangan
+          </Link>
+          <span className="text-sm text-gray-600">{session?.user?.name}</span>
           <button onClick={() => signOut({ callbackUrl: "/" })}
-            className="text-sm text-gray-500 hover:text-gray-800 transition-colors">
-            Sign out
+            className="text-sm text-gray-400 hover:text-red-500 transition-colors">
+            Keluar
           </button>
         </div>
 
-        {/* Mobile right: book + hamburger */}
-        <div className="flex md:hidden items-center gap-2">
-          <Link href="/bookings/new"
-            className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm font-medium hover:bg-blue-700 transition-colors">
-            + Booking
-          </Link>
-          <button
-            onClick={() => setOpen(o => !o)}
-            aria-label="Toggle menu"
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-600"
-          >
-            {open ? (
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            )}
-          </button>
-        </div>
+        {/* Mobile hamburger */}
+        <button onClick={() => setOpen(!open)}
+          className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+          aria-label="Menu">
+          <div className="w-5 h-4 flex flex-col justify-between">
+            <span className={`block h-0.5 bg-gray-600 transition-transform ${open ? "rotate-45 translate-y-1.5" : ""}`} />
+            <span className={`block h-0.5 bg-gray-600 transition-opacity ${open ? "opacity-0" : ""}`} />
+            <span className={`block h-0.5 bg-gray-600 transition-transform ${open ? "-rotate-45 -translate-y-2" : ""}`} />
+          </div>
+        </button>
       </nav>
 
-      {/* Mobile drawer */}
+      {/* Mobile menu */}
       {open && (
-        <div className="md:hidden fixed inset-0 z-30 bg-black/40" onClick={() => setOpen(false)}>
-          <div
-            className="absolute top-0 left-0 bottom-0 w-72 bg-white shadow-xl flex flex-col"
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Drawer header */}
-            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
-              <div>
-                <p className="font-semibold text-gray-800 text-sm">{session?.user?.name}</p>
-                <p className="text-xs text-gray-400">{session?.user?.email}</p>
-              </div>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                role === "ADMIN" ? "bg-red-100 text-red-700" :
-                role === "MANAGER" ? "bg-blue-100 text-blue-700" :
-                "bg-gray-100 text-gray-600"
-              }`}>{role}</span>
+        <div className="md:hidden fixed inset-0 z-30 bg-black/20" onClick={() => setOpen(false)}>
+          <div className="absolute right-0 top-0 h-full w-72 bg-white shadow-xl flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="px-4 py-4 border-b border-gray-100 flex items-center justify-between">
+              <span className="font-bold text-blue-600">Booking</span>
+              <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
             </div>
 
-            {/* Nav links */}
-            <div className="flex-1 overflow-y-auto py-3">
-              <div className="px-2 space-y-0.5">
-                {navItems.map(item => (
-                  <Link key={item.href} href={item.href}
-                    onClick={() => setOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                      isActive(item.href) ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"
-                    }`}>
-                    {item.label}
-                  </Link>
-                ))}
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
+              {navItems.map(item => (
+                <Link key={item.href} href={item.href}
+                  onClick={() => setOpen(false)}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                    isActive(item.href) ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"
+                  }`}>
+                  {item.label}
+                </Link>
+              ))}
+
+              <div className="flex gap-2 pt-2">
+                <Link href="/bookings/new" onClick={() => setOpen(false)}
+                  className="flex-1 text-center bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
+                  + Kendaraan
+                </Link>
+                <Link href="/meeting-bookings/new" onClick={() => setOpen(false)}
+                  className="flex-1 text-center bg-purple-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-purple-700">
+                  + Ruangan
+                </Link>
               </div>
 
               {role === "ADMIN" && (
-                <div className="mt-4 px-2">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-3 mb-1">Admin</p>
-                  <div className="space-y-0.5">
-                    {adminItems.map(item => (
-                      <Link key={item.href} href={item.href}
-                        onClick={() => setOpen(false)}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                          isActive(item.href) ? "bg-orange-50 text-orange-700" : "text-gray-700 hover:bg-gray-100"
-                        }`}>
-                        {item.label}
-                      </Link>
-                    ))}
-                  </div>
+                <div className="pt-4">
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide px-3 mb-2">Admin</p>
+                  {adminItems.map(item => (
+                    <Link key={item.href} href={item.href}
+                      onClick={() => setOpen(false)}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                        isActive(item.href) ? "bg-orange-50 text-orange-700" : "text-gray-700 hover:bg-gray-100"
+                      }`}>
+                      {item.label}
+                    </Link>
+                  ))}
                 </div>
               )}
             </div>
 
-            {/* Sign out */}
             <div className="px-4 py-4 border-t border-gray-100">
-              <button
-                onClick={() => signOut({ callbackUrl: "/" })}
-                className="w-full text-left text-sm text-red-600 hover:text-red-700 font-medium py-2"
-              >
-                Sign out
+              <p className="text-xs text-gray-400 mb-2">{session?.user?.name} · {role}</p>
+              <button onClick={() => signOut({ callbackUrl: "/" })}
+                className="w-full text-left text-sm text-red-600 hover:text-red-700 font-medium py-2">
+                Keluar
               </button>
             </div>
           </div>
