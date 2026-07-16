@@ -48,21 +48,9 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-          <p className="text-gray-500 text-sm">Selamat datang, {session?.user?.name}</p>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/bookings/new"
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm">
-            + Booking Kendaraan
-          </Link>
-          <Link href="/meeting-bookings/new"
-            className="bg-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors text-sm">
-            + Booking Ruangan
-          </Link>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+        <p className="text-gray-500 text-sm">Selamat datang, {session?.user?.name}</p>
       </div>
 
       {/* Stats */}
