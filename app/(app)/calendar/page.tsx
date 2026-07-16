@@ -116,15 +116,19 @@ export default function CalendarPage() {
       });
 
       // Filter to current week and attach driver
+      // Priority: per-day CarAssignment > car.defaultDriver (already resolved by /api/bookings) > null
       return bookingList
         .filter(b => {
           const ds = toWIBDateStr(b.startTime);
           return ds >= fromStr && ds <= toStr;
         })
-        .map(b => ({
-          ...b,
-          driver: driverMap.get(`${b.carId}_${toWIBDateStr(b.startTime)}`) ?? null,
-        }));
+        .map(b => {
+          const assignedDriver = driverMap.get(`${b.carId}_${toWIBDateStr(b.startTime)}`);
+          return {
+            ...b,
+            driver: assignedDriver !== undefined ? assignedDriver : (b.driver ?? null),
+          };
+        });
     },
   });
 
