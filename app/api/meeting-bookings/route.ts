@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
   const [bookings, total] = await Promise.all([
     prisma.meetingBooking.findMany({
       where,
-      orderBy: { startTime: "desc" },
+      orderBy: { startTime: "asc" },
       skip: (page - 1) * limit,
       take: limit,
       include: {
