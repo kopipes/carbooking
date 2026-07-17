@@ -58,6 +58,11 @@ function LoginForm() {
       >
         {loading ? "Signing in..." : "Sign in"}
       </button>
+      <div className="text-center">
+        <Link href="/forgot-password" className="text-sm text-gray-400 hover:text-blue-600 transition-colors">
+          Lupa password?
+        </Link>
+      </div>
     </form>
   );
 }
