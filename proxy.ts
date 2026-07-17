@@ -18,6 +18,8 @@ export function proxy(req: NextRequest) {
   if (
     pathname === "/" ||
     pathname === "/login" ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password" ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/public") ||
     pathname.startsWith("/_next") ||
