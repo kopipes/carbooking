@@ -1,14 +1,12 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { fmtWIB } from "@/lib/wib";
+import { toWIBDateStr, wibToUTC } from "@/lib/wib";
 
 async function getTodayData() {
-  // Today in WIB: UTC+7, so today WIB starts at UTC 17:00 yesterday
-  const now = new Date();
-  const todayWIBStart = new Date(now);
-  todayWIBStart.setUTCHours(0 - 7, 0, 0, 0);
-  const todayWIBEnd = new Date(todayWIBStart);
-  todayWIBEnd.setUTCHours(todayWIBStart.getUTCHours() + 24);
+  // Get today's date string in WIB (UTC+7)
+  const todayStr     = toWIBDateStr(new Date());
+  const todayWIBStart = wibToUTC(todayStr, "00:00");
+  const todayWIBEnd   = wibToUTC(todayStr, "23:59");
 
   const [carBookings, meetingBookings] = await Promise.all([
     prisma.booking.findMany({
