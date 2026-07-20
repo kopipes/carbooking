@@ -137,8 +137,8 @@ export default function EditBookingPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Tanggal <span className="text-red-500">*</span>
             </label>
-            <input type="date" value={form.date} min={todayWIB()}
-              onChange={e => setForm({ ...form, date: e.target.value, carId: "" })}
+            <input type="date" value={form.date}
+              onChange={e => setForm({ ...form, date: e.target.value })}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -147,14 +147,14 @@ export default function EditBookingPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Jam Mulai (WIB)</label>
               <input type="time" value={form.startTime}
-                onChange={e => setForm({ ...form, startTime: e.target.value, carId: "" })}
+                onChange={e => setForm({ ...form, startTime: e.target.value })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Jam Selesai (WIB)</label>
               <input type="time" value={form.endTime}
-                onChange={e => setForm({ ...form, endTime: e.target.value, carId: "" })}
+                onChange={e => setForm({ ...form, endTime: e.target.value })}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -180,25 +180,36 @@ export default function EditBookingPage() {
               <p className="text-xs text-gray-400">Memuat kendaraan...</p>
             ) : (
               <div className="space-y-2">
-                {/* Always show current car even if not in available list */}
-                {[...( cars ?? [])].map((car: any) => (
-                  <label key={car.id}
-                    className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors ${
-                      form.carId === String(car.id) ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:bg-gray-50"}`}
-                  >
-                    <input type="radio" name="car" value={car.id}
-                      checked={form.carId === String(car.id)}
-                      onChange={() => setForm({ ...form, carId: String(car.id) })}
-                      className="accent-blue-600"
-                    />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-800">{car.name}</p>
-                      <p className="text-xs text-gray-500">{car.plate} · {car.type} · {car.capacity} kursi</p>
-                    </div>
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Tersedia</span>
-                  </label>
-                ))}
-                {cars.length === 0 && (
+                {/* Merge available cars with current car so it always shows */}
+                {(() => {
+                  const availableIds = new Set((cars ?? []).map((c: any) => String(c.id)));
+                  const currentCar   = booking?.car;
+                  const merged       = [...(cars ?? [])];
+                  if (currentCar && !availableIds.has(String(currentCar.id))) {
+                    merged.unshift({ ...currentCar, isCurrent: true });
+                  }
+                  return merged.map((car: any) => (
+                    <label key={car.id}
+                      className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors ${
+                        form.carId === String(car.id) ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:bg-gray-50"}`}
+                    >
+                      <input type="radio" name="car" value={car.id}
+                        checked={form.carId === String(car.id)}
+                        onChange={() => setForm({ ...form, carId: String(car.id) })}
+                        className="accent-blue-600"
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-800">{car.name}</p>
+                        <p className="text-xs text-gray-500">{car.plate} · {car.type} · {car.capacity} kursi</p>
+                      </div>
+                      {car.isCurrent
+                        ? <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Saat ini</span>
+                        : <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Tersedia</span>
+                      }
+                    </label>
+                  ));
+                })()}
+                {(cars ?? []).length === 0 && !booking?.car && (
                   <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
                     Tidak ada kendaraan tersedia untuk waktu ini
                   </p>
