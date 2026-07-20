@@ -2,6 +2,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { toWIBDateStr, wibToUTC } from "@/lib/wib";
 
+export const dynamic = "force-dynamic";
+
 async function getTodayData() {
   // Get today's date string in WIB (UTC+7)
   const todayStr     = toWIBDateStr(new Date());
