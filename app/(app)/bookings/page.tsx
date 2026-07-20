@@ -6,19 +6,22 @@ import Link from "next/link";
 import { fmtDateWIB, fmtTimeWIB } from "@/lib/wib";
 import { useDebounce } from "@/lib/useDebounce";
 
+type Tab = "upcoming" | "past";
+
 export default function BookingsPage() {
+  const [tab, setTab]       = useState<Tab>("upcoming");
   const [page, setPage]     = useState(1);
   const [search, setSearch] = useState("");
   const debouncedSearch     = useDebounce(search, 300);
   const { data: session }   = useSession();
   const isUser              = session?.user?.role === "USER";
 
+  // Fetch all bookings (limit high), split client-side by endTime vs now
   const { data, isLoading } = useQuery({
-    queryKey: ["bookings", page, debouncedSearch, isUser],
+    queryKey: ["bookings", debouncedSearch, isUser],
     queryFn: async () => {
-      const params = new URLSearchParams({ page: String(page), limit: "10" });
+      const params = new URLSearchParams({ page: "1", limit: "500" });
       if (debouncedSearch) params.set("q", debouncedSearch);
-      // USER role only sees their own bookings in the list
       if (isUser) params.set("mine", "1");
       const res = await fetch(`/api/bookings?${params}`);
       return res.json();
@@ -31,16 +34,74 @@ export default function BookingsPage() {
     setPage(1);
   }
 
-  const bookings = data?.bookings ?? [];
+  function handleTabChange(t: Tab) {
+    setTab(t);
+    setPage(1);
+  }
+
+  const now = new Date();
+  const allBookings: any[] = data?.bookings ?? [];
+
+  // Split by endTime
+  const upcoming = allBookings
+    .filter(b => new Date(b.endTime) >= now)
+    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+
+  const past = allBookings
+    .filter(b => new Date(b.endTime) < now)
+    .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+
+  const activeList = tab === "upcoming" ? upcoming : past;
+
+  // Client-side pagination
+  const LIMIT    = 10;
+  const total    = activeList.length;
+  const pages    = Math.max(1, Math.ceil(total / LIMIT));
+  const safePage = Math.min(page, pages);
+  const bookings = activeList.slice((safePage - 1) * LIMIT, safePage * LIMIT);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">Booking</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Kendaraan</h1>
         <Link href="/bookings/new"
           className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
           + Booking Baru
         </Link>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+        <button
+          onClick={() => handleTabChange("upcoming")}
+          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+            tab === "upcoming"
+              ? "bg-white text-blue-700 shadow-sm"
+              : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          Mendatang
+          {!isLoading && (
+            <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
+              tab === "upcoming" ? "bg-blue-100 text-blue-600" : "bg-gray-200 text-gray-500"
+            }`}>{upcoming.length}</span>
+          )}
+        </button>
+        <button
+          onClick={() => handleTabChange("past")}
+          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+            tab === "past"
+              ? "bg-white text-gray-700 shadow-sm"
+              : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          Sudah Lewat
+          {!isLoading && (
+            <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
+              tab === "past" ? "bg-gray-200 text-gray-600" : "bg-gray-200 text-gray-500"
+            }`}>{past.length}</span>
+          )}
+        </button>
       </div>
 
       {/* Search */}
@@ -64,7 +125,9 @@ export default function BookingsPage() {
         <div className="py-16 text-center text-gray-400">Memuat...</div>
       ) : bookings.length === 0 ? (
         <div className="py-12 text-center text-gray-400 bg-white rounded-2xl border border-gray-200">
-          {debouncedSearch ? `Tidak ada hasil untuk "${debouncedSearch}"` : "Tidak ada data booking"}
+          {debouncedSearch
+            ? `Tidak ada hasil untuk "${debouncedSearch}"`
+            : tab === "upcoming" ? "Tidak ada booking mendatang" : "Tidak ada booking yang sudah lewat"}
         </div>
       ) : (
         <>
@@ -72,7 +135,9 @@ export default function BookingsPage() {
           <div className="md:hidden space-y-3">
             {bookings.map((b: any) => (
               <Link key={b.id} href={`/bookings/${b.id}`}
-                className="block bg-white rounded-xl border border-gray-200 shadow-sm p-4 hover:border-blue-300 transition-colors">
+                className={`block bg-white rounded-xl border shadow-sm p-4 transition-colors ${
+                  tab === "past" ? "border-gray-200 opacity-75 hover:border-gray-300" : "border-gray-200 hover:border-blue-300"
+                }`}>
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <p className="font-semibold text-gray-800 text-sm leading-tight">{b.title}</p>
                   <span className="text-xs text-blue-600 shrink-0">Detail →</span>
@@ -101,7 +166,9 @@ export default function BookingsPage() {
                       {b.driver.phone && <span className="text-gray-400">· {b.driver.phone}</span>}
                     </div>
                   ) : (
-                    <span className="inline-block text-xs text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-full">Driver belum ditugaskan</span>
+                    tab === "upcoming" && (
+                      <span className="inline-block text-xs text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-full">Driver belum ditugaskan</span>
+                    )
                   )}
                 </div>
               </Link>
@@ -125,7 +192,7 @@ export default function BookingsPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {bookings.map((b: any) => (
-                    <tr key={b.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={b.id} className={`transition-colors ${tab === "past" ? "hover:bg-gray-50 opacity-75" : "hover:bg-gray-50"}`}>
                       <td className="px-4 py-3 font-medium text-gray-800">{b.title}</td>
                       <td className="px-4 py-3 text-gray-600">{b.user.name}</td>
                       <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
@@ -145,7 +212,9 @@ export default function BookingsPage() {
                             {b.driver.phone && <p className="text-xs text-gray-400">{b.driver.phone}</p>}
                           </div>
                         ) : (
-                          <span className="text-xs text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-full">Belum ditugaskan</span>
+                          tab === "upcoming" && (
+                            <span className="text-xs text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-full">Belum ditugaskan</span>
+                          )
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -159,26 +228,24 @@ export default function BookingsPage() {
           </div>
 
           {/* Pagination */}
-          {data?.pages > 1 && (
+          {pages > 1 && (
             <div className="flex items-center justify-between text-sm bg-white rounded-xl border border-gray-200 px-4 py-3">
-              <span className="text-gray-500 text-xs">{data.page}/{data.pages} · {data.total} total</span>
+              <span className="text-gray-500 text-xs">{safePage}/{pages} · {total} total</span>
               <div className="flex items-center gap-1">
-                <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1}
+                <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={safePage===1}
                   className="px-3 py-1 rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50 text-xs">‹</button>
-                {Array.from({length: Math.min(data.pages, 5)}, (_, i) => {
-                  // Show pages around current page
-                  const total = data.pages;
-                  let start = Math.max(1, page - 2);
-                  let end   = Math.min(total, start + 4);
+                {Array.from({length: Math.min(pages, 5)}, (_, i) => {
+                  let start = Math.max(1, safePage - 2);
+                  let end   = Math.min(pages, start + 4);
                   start = Math.max(1, end - 4);
                   return start + i;
                 }).map(p => (
                   <button key={p} onClick={() => setPage(p)}
                     className={`px-3 py-1 rounded border text-xs transition-colors ${
-                      p===page ? "bg-blue-600 text-white border-blue-600" : "border-gray-200 hover:bg-gray-50"
+                      p===safePage ? "bg-blue-600 text-white border-blue-600" : "border-gray-200 hover:bg-gray-50"
                     }`}>{p}</button>
                 ))}
-                <button onClick={() => setPage(p => Math.min(data.pages, p+1))} disabled={page===data.pages}
+                <button onClick={() => setPage(p => Math.min(pages, p+1))} disabled={safePage===pages}
                   className="px-3 py-1 rounded border border-gray-200 disabled:opacity-40 hover:bg-gray-50 text-xs">›</button>
               </div>
             </div>
