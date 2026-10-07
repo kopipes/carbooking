@@ -16,13 +16,17 @@ export default function BookingsPage() {
   const { data: session }   = useSession();
   const isUser              = session?.user?.role === "USER";
 
-  // Fetch all bookings (limit high), split client-side by endTime vs now
+  // Server-side tab filter + pagination. "upcoming" = endTime >= now, "past" = endTime < now.
+  const LIMIT = 10;
   const { data, isLoading } = useQuery({
-    queryKey: ["bookings", debouncedSearch, isUser],
+    queryKey: ["bookings", debouncedSearch, isUser, tab, page],
     queryFn: async () => {
-      const params = new URLSearchParams({ page: "1", limit: "500" });
+      const nowISO = new Date().toISOString();
+      const params = new URLSearchParams({ page: String(page), limit: String(LIMIT) });
       if (debouncedSearch) params.set("q", debouncedSearch);
       if (isUser) params.set("mine", "1");
+      if (tab === "upcoming") { params.set("after", nowISO); params.set("order", "asc"); }
+      else                    { params.set("before", nowISO); params.set("order", "desc"); }
       const res = await fetch(`/api/bookings?${params}`);
       return res.json();
     },
@@ -39,26 +43,10 @@ export default function BookingsPage() {
     setPage(1);
   }
 
-  const now = new Date();
-  const allBookings: any[] = data?.bookings ?? [];
-
-  // Split by endTime
-  const upcoming = allBookings
-    .filter(b => new Date(b.endTime) >= now)
-    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
-
-  const past = allBookings
-    .filter(b => new Date(b.endTime) < now)
-    .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
-
-  const activeList = tab === "upcoming" ? upcoming : past;
-
-  // Client-side pagination
-  const LIMIT    = 10;
-  const total    = activeList.length;
-  const pages    = Math.max(1, Math.ceil(total / LIMIT));
-  const safePage = Math.min(page, pages);
-  const bookings = activeList.slice((safePage - 1) * LIMIT, safePage * LIMIT);
+  const bookings: any[] = data?.bookings ?? [];
+  const total: number   = data?.total ?? 0;
+  const pages: number   = Math.max(1, data?.pages ?? 1);
+  const safePage        = Math.min(page, pages);
 
   return (
     <div className="space-y-4">
@@ -81,10 +69,10 @@ export default function BookingsPage() {
           }`}
         >
           Mendatang
-          {!isLoading && (
+          {!isLoading && tab === "upcoming" && (
             <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
               tab === "upcoming" ? "bg-blue-100 text-blue-600" : "bg-gray-200 text-gray-500"
-            }`}>{upcoming.length}</span>
+            }`}>{total}</span>
           )}
         </button>
         <button
@@ -96,10 +84,10 @@ export default function BookingsPage() {
           }`}
         >
           Sudah Lewat
-          {!isLoading && (
+          {!isLoading && tab === "past" && (
             <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
               tab === "past" ? "bg-gray-200 text-gray-600" : "bg-gray-200 text-gray-500"
-            }`}>{past.length}</span>
+            }`}>{total}</span>
           )}
         </button>
       </div>

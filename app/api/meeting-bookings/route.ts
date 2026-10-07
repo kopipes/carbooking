@@ -14,6 +14,9 @@ export async function GET(req: NextRequest) {
   const q     = searchParams.get("q")?.trim() ?? "";
   const from  = searchParams.get("from");
   const to    = searchParams.get("to");
+  const before = searchParams.get("before");
+  const after  = searchParams.get("after");
+  const order  = searchParams.get("order") === "desc" ? "desc" : "asc";
 
   const where: any = {};
   if (mine) where.userId = parseInt(session.user.id);
@@ -22,6 +25,8 @@ export async function GET(req: NextRequest) {
     const toUTC   = wibToUTC(to,   "23:59");
     where.startTime = { gte: fromUTC, lte: toUTC };
   }
+  if (before) where.endTime = { ...(where.endTime ?? {}), lt: new Date(before) };
+  if (after)  where.endTime = { ...(where.endTime ?? {}), gte: new Date(after) };
   if (q) {
     where.OR = [
       { title:       { contains: q } },
@@ -34,7 +39,7 @@ export async function GET(req: NextRequest) {
   const [bookings, total] = await Promise.all([
     prisma.meetingBooking.findMany({
       where,
-      orderBy: { startTime: "asc" },
+      orderBy: { startTime: order },
       skip: (page - 1) * limit,
       take: limit,
       include: {

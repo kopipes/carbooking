@@ -13,9 +13,12 @@ export async function GET(req: NextRequest) {
   const carId  = searchParams.get("carId") ? parseInt(searchParams.get("carId")!) : undefined;
   const q      = searchParams.get("q")?.trim() ?? "";
   const mine   = searchParams.get("mine") === "1";
+  const order  = searchParams.get("order") === "desc" ? "desc" : "asc";
   const userId = mine ? parseInt(session.user.id) : undefined;
   const from   = searchParams.get("from");
   const to     = searchParams.get("to");
+  const before = searchParams.get("before");
+  const after  = searchParams.get("after");
 
   const where: any = {};
   if (carId)  where.carId  = carId;
@@ -25,6 +28,8 @@ export async function GET(req: NextRequest) {
     const toUTC   = wibToUTC(to,   "23:59");
     where.startTime = { gte: fromUTC, lte: toUTC };
   }
+  if (before) where.endTime = { ...(where.endTime ?? {}), lt: new Date(before) };
+  if (after)  where.endTime = { ...(where.endTime ?? {}), gte: new Date(after) };
   if (q) {
     where.OR = [
       { title:       { contains: q } },
@@ -38,7 +43,7 @@ export async function GET(req: NextRequest) {
   const [bookings, total] = await Promise.all([
     prisma.booking.findMany({
       where,
-      orderBy: { startTime: "asc" },
+      orderBy: { startTime: order },
       skip: (page - 1) * limit,
       take: limit,
       include: {
