@@ -12,9 +12,16 @@ export async function GET(req: NextRequest) {
   const limit = parseInt(searchParams.get("limit") ?? "10");
   const mine  = searchParams.get("mine") === "1";
   const q     = searchParams.get("q")?.trim() ?? "";
+  const from  = searchParams.get("from");
+  const to    = searchParams.get("to");
 
   const where: any = {};
   if (mine) where.userId = parseInt(session.user.id);
+  if (from && to) {
+    const fromUTC = wibToUTC(from, "00:00");
+    const toUTC   = wibToUTC(to,   "23:59");
+    where.startTime = { gte: fromUTC, lte: toUTC };
+  }
   if (q) {
     where.OR = [
       { title:       { contains: q } },

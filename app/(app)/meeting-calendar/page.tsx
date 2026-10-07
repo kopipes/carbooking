@@ -70,7 +70,7 @@ export default function MeetingCalendarPage() {
   const { data: bookings } = useQuery({
     queryKey: ["calendar-meeting-bookings", fromStr, toStr],
     queryFn: async () => {
-      const params = new URLSearchParams({ limit: "200", page: "1" });
+      const params = new URLSearchParams({ limit: "500", page: "1", from: fromStr, to: toStr });
       const res = await fetch(`/api/meeting-bookings?${params}`);
       const list: any[] = (await res.json()).bookings ?? [];
       return list.filter(b => {
