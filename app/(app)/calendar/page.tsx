@@ -95,9 +95,7 @@ export default function CalendarPage() {
     queryKey: ["calendar-bookings", fromStr, toStr],
     queryFn: async () => {
       // Fetch bookings filtered to the displayed week only
-      const startUTC = wibToUTC(fromStr, "00:00").toISOString();
-      const endUTC   = wibToUTC(toStr,   "23:59").toISOString();
-      const params   = new URLSearchParams({ limit: "200", page: "1" });
+      const params   = new URLSearchParams({ limit: "500", page: "1", from: fromStr, to: toStr });
       const bookingRes = await fetch(`/api/bookings?${params}`);
       const bookingList: any[] = (await bookingRes.json()).bookings ?? [];
 

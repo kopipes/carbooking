@@ -14,10 +14,17 @@ export async function GET(req: NextRequest) {
   const q      = searchParams.get("q")?.trim() ?? "";
   const mine   = searchParams.get("mine") === "1";
   const userId = mine ? parseInt(session.user.id) : undefined;
+  const from   = searchParams.get("from");
+  const to     = searchParams.get("to");
 
   const where: any = {};
   if (carId)  where.carId  = carId;
   if (userId) where.userId = userId;
+  if (from && to) {
+    const fromUTC = wibToUTC(from, "00:00");
+    const toUTC   = wibToUTC(to,   "23:59");
+    where.startTime = { gte: fromUTC, lte: toUTC };
+  }
   if (q) {
     where.OR = [
       { title:       { contains: q } },
