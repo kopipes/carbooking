@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     const start = startTime.length <= 5 ? wibToUTC(date, startTime) : new Date(startTime);
     const end   = endTime.length   <= 5 ? wibToUTC(date, endTime)   : new Date(endTime);
     const busyRooms = await prisma.meetingBooking.findMany({
-      where: { OR: [{ startTime: { lt: end }, endTime: { gt: start } }] },
+      where: { startTime: { lt: end }, endTime: { gt: start } },
       select: { meetingRoomId: true },
     });
     const busyIds = busyRooms.map(b => b.meetingRoomId);

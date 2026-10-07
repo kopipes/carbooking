@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     const start = startTime.length <= 5 ? wibToUTC(date, startTime) : new Date(startTime);
     const end   = endTime.length   <= 5 ? wibToUTC(date, endTime)   : new Date(endTime);
     const busyCars = await prisma.booking.findMany({
-      where: { OR: [{ startTime: { lt: end }, endTime: { gt: start } }] },
+      where: { startTime: { lt: end }, endTime: { gt: start } },
       select: { carId: true },
     });
     const busyCarIds = busyCars.map(b => b.carId);
