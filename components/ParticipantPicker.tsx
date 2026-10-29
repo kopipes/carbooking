@@ -169,7 +169,7 @@ export default function ParticipantPicker({
 
       <p className="text-xs text-gray-400 mt-1">
         Notifikasi dikirim ke pemesan dan peserta yang dipilih (via aplikasi Notiv).
-        Email eksternal hanya menerima notifikasi jika akun Notiv-nya aktif dan terhubung.
+        Jika akun Notiv penerima belum terhubung, notifikasi dikirim lewat email sebagai cadangan.
       </p>
     </div>
   );

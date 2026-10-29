@@ -94,8 +94,10 @@ export default function NotificationLogPage() {
 
       {filter === "failed" && (
         <p className="text-xs text-gray-500 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
-          Notifikasi gagal biasanya karena email penerima belum terdaftar/terverifikasi atau
-          belum di-connect ke integration Notiv (Integrations &gt; Manage &gt; Connected recipients).
+          Notifikasi gagal terkirim lewat Notiv maupun email cadangan. Biasanya karena email
+          penerima tidak valid, atau pengiriman Notiv gagal (email belum terverifikasi/belum
+          di-connect di Integrations &gt; Manage &gt; Connected recipients) dan email cadangan
+          ikut gagal.
         </p>
       )}
 
