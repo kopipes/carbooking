@@ -84,6 +84,24 @@ export default function MeetingBookingDetailPage() {
           </div>
         </div>
 
+        <div className="pt-3 border-t border-gray-100">
+          <p className="text-gray-400 text-xs uppercase tracking-wide mb-1.5">
+            Peserta {booking.participants?.length ? `(${booking.participants.length})` : ""}
+          </p>
+          {booking.participants?.length ? (
+            <div className="flex flex-wrap gap-1.5">
+              {booking.participants.map((p: any) => (
+                <span key={p.id}
+                  className="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded-full">
+                  {p.user.name}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400">Belum ada peserta</p>
+          )}
+        </div>
+
         {(canEdit || canDelete) && (
           <div className="flex gap-3 pt-2 border-t border-gray-100">
             {canEdit && (

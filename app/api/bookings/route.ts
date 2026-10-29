@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { toWIBDateStr, wibToUTC } from "@/lib/wib";
+import { notifyRecipients } from "@/lib/notiv";
+import { vehicleNotification } from "@/lib/notification-templates";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -132,9 +134,47 @@ export async function POST(req: NextRequest) {
     },
     include: {
       user: { select: { name: true } },
-      car:  { select: { name: true, plate: true } },
+      car:  {
+        select: {
+          name: true,
+          plate: true,
+          defaultDriver: { select: { name: true, phone: true } },
+        },
+      },
     },
   });
 
-  return NextResponse.json(booking, { status: 201 });
+  // Resolve driver: per-day assignment overrides car default driver
+  const bookingDate = toWIBDateStr(start);
+  const assignment = await prisma.carAssignment.findUnique({
+    where:   { carId_date: { carId: parseInt(carId), date: bookingDate } },
+    include: { driver: { select: { name: true, phone: true } } },
+  });
+  const driver = assignment?.driver ?? booking.car.defaultDriver ?? null;
+
+  // Best-effort notification: never fail the booking because Notiv is down or
+  // the recipient is not connected to the integration.
+  let notification = null;
+  const recipientEmail = session.user.email;
+  if (recipientEmail) {
+    const payload = vehicleNotification(
+      {
+        id: booking.id,
+        title: booking.title,
+        description: booking.description,
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+        car: { name: booking.car.name, plate: booking.car.plate },
+        driver,
+      },
+      "created"
+    );
+    notification = await notifyRecipients([{ email: recipientEmail }], () => ({
+      ...payload,
+      idempotency_key: `car-created-${booking.id}-${recipientEmail.toLowerCase()}`,
+    }));
+  }
+
+  const { defaultDriver, ...carRest } = booking.car;
+  return NextResponse.json({ ...booking, car: carRest, driver, notification }, { status: 201 });
 }

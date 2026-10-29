@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { wibToUTC } from "@/lib/wib";
+import { notifyRecipients } from "@/lib/notiv";
+import { meetingNotification } from "@/lib/notification-templates";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -58,10 +60,23 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { title, description, meetingRoomId, date, startSlot, endSlot, durationMin } = body;
+  const { title, description, meetingRoomId, date, startSlot, endSlot, durationMin, participants } = body;
 
   if (!title || !meetingRoomId || !date || !startSlot || !endSlot || !durationMin) {
     return NextResponse.json({ error: "Lengkapi semua field yang wajib diisi" }, { status: 400 });
+  }
+
+  const participantIds: number[] = Array.isArray(participants)
+    ? [...new Set(participants.map((v: unknown) => parseInt(String(v))).filter(Number.isFinite))]
+    : [];
+
+  if (participantIds.length) {
+    const validCount = await prisma.user.count({
+      where: { id: { in: participantIds }, active: true },
+    });
+    if (validCount !== participantIds.length) {
+      return NextResponse.json({ error: "Peserta tidak valid atau tidak aktif" }, { status: 400 });
+    }
   }
 
   const start = wibToUTC(date, startSlot);
@@ -90,11 +105,45 @@ export async function POST(req: NextRequest) {
       startTime:     start,
       endTime:       end,
       durationMin:   parseInt(durationMin),
+      participants: participantIds.length
+        ? { create: participantIds.map(userId => ({ userId })) }
+        : undefined,
     },
     include: {
-      user:        { select: { name: true } },
+      user:        { select: { name: true, email: true } },
       meetingRoom: { select: { name: true } },
+      participants: { include: { user: { select: { name: true, email: true } } } },
     },
   });
-  return NextResponse.json(booking, { status: 201 });
+
+  // Recipients: the booker plus every selected participant (deduplicated).
+  const recipients = [
+    ...(booking.user.email ? [{ email: booking.user.email }] : []),
+    ...booking.participants
+      .map(p => ({ email: p.user.email }))
+      .filter((r): r is { email: string } => Boolean(r.email)),
+  ];
+  const payload = meetingNotification(
+    {
+      id: booking.id,
+      title: booking.title,
+      description: booking.description,
+      startTime: booking.startTime,
+      endTime: booking.endTime,
+      meetingRoom: { name: booking.meetingRoom.name },
+      participants: booking.participants.map(p => ({ name: p.user.name })),
+    },
+    "created"
+  );
+  const notification = recipients.length
+    ? await notifyRecipients(recipients, r => ({
+        ...payload,
+        idempotency_key: `meeting-created-${booking.id}-${r.email.toLowerCase()}`,
+      }))
+    : null;
+
+  return NextResponse.json(
+    { ...booking, notification },
+    { status: 201 }
+  );
 }

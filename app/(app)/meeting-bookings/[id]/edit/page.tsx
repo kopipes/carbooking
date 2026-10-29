@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import ParticipantPicker from "@/components/ParticipantPicker";
 
 export default function EditMeetingBookingPage() {
   const { id }            = useParams<{ id: string }>();
@@ -16,6 +17,7 @@ export default function EditMeetingBookingPage() {
     date: "", startTime: "", endTime: "",
   });
   const [error, setError] = useState("");
+  const [participantIds, setParticipantIds] = useState<number[]>([]);
 
   const { data: booking, isLoading } = useQuery({
     queryKey: ["meeting-booking", id],
@@ -44,6 +46,9 @@ export default function EditMeetingBookingPage() {
       startTime:     toWIBTime(booking.startTime),
       endTime:       toWIBTime(booking.endTime),
     });
+    setParticipantIds(
+      (booking.participants ?? []).map((p: { userId: number }) => p.userId)
+    );
   }, [booking]);
 
   const durationMin = form.startTime && form.endTime
@@ -79,6 +84,7 @@ export default function EditMeetingBookingPage() {
           startSlot:     form.startTime,
           endSlot:       form.endTime,
           durationMin:   String(durationMin),
+          participants:  participantIds,
         }),
       });
       if (!res.ok) throw new Error((await res.json()).error ?? "Gagal menyimpan");
@@ -183,6 +189,8 @@ export default function EditMeetingBookingPage() {
             </div>
           )}
         </div>
+
+        <ParticipantPicker selected={participantIds} onChange={setParticipantIds} />
 
         {error && <p className="text-red-500 text-sm">{error}</p>}
 

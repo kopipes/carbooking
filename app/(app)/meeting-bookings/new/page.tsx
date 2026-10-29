@@ -3,6 +3,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import MeetingCalendar from "@/components/MeetingCalendar";
+import ParticipantPicker from "@/components/ParticipantPicker";
 import { todayWIB, wibToUTC } from "@/lib/wib";
 
 function NewMeetingBookingForm() {
@@ -15,6 +16,7 @@ function NewMeetingBookingForm() {
     meetingRoomId: "", date: "",
     startTime: "", endTime: "",
   });
+  const [participantIds, setParticipantIds] = useState<number[]>([]);
   const [error, setError]     = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -65,6 +67,7 @@ function NewMeetingBookingForm() {
         meetingRoomId: form.meetingRoomId, date: form.date,
         startSlot: form.startTime, endSlot: form.endTime,
         durationMin: String(durationMin),
+        participants: participantIds,
       }),
     });
     setLoading(false);
@@ -167,6 +170,8 @@ function NewMeetingBookingForm() {
             </div>
           )}
         </div>
+
+        <ParticipantPicker selected={participantIds} onChange={setParticipantIds} />
 
         {error && <p className="text-red-500 text-sm">{error}</p>}
 

@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { wibToUTC, toWIBDateStr } from "@/lib/wib";
+import { notifyRecipients } from "@/lib/notiv";
+import { vehicleNotification } from "@/lib/notification-templates";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -40,7 +42,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const role     = session.user.role;
   const userId   = parseInt(session.user.id);
 
-  const booking  = await prisma.booking.findUnique({ where: { id: parseInt(id) } });
+  const booking  = await prisma.booking.findUnique({
+    where: { id: parseInt(id) },
+    include: {
+      user: { select: { email: true } },
+      car:  { select: { name: true, plate: true, defaultDriver: { select: { name: true, phone: true } } } },
+    },
+  });
   if (!booking) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   if (role !== "ADMIN" && booking.userId !== userId) {
@@ -84,10 +92,46 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     },
     include: {
       user: { select: { name: true } },
-      car:  { select: { name: true, plate: true } },
+      car:  { select: { name: true, plate: true, defaultDriver: { select: { name: true, phone: true } } } },
     },
   });
-  return NextResponse.json(updated);
+
+  // Notify only when a schedule-relevant field actually changed (avoids spam
+  // on cosmetic edits such as description-only changes).
+  let notification = null;
+  const scheduleChanged =
+    booking.title       !== title ||
+    booking.carId       !== parseInt(carId) ||
+    booking.startTime.getTime() !== start.getTime() ||
+    booking.endTime.getTime()   !== end.getTime();
+
+  if (scheduleChanged && booking.user.email) {
+    const bookingDate = toWIBDateStr(start);
+    const assignment = await prisma.carAssignment.findUnique({
+      where:   { carId_date: { carId: parseInt(carId), date: bookingDate } },
+      include: { driver: { select: { name: true, phone: true } } },
+    });
+    const driver = assignment?.driver ?? updated.car.defaultDriver ?? null;
+    const payload = vehicleNotification(
+      {
+        id: updated.id,
+        title: updated.title,
+        description: updated.description,
+        startTime: updated.startTime,
+        endTime: updated.endTime,
+        car: { name: updated.car.name, plate: updated.car.plate },
+        driver,
+      },
+      "updated"
+    );
+    notification = await notifyRecipients([{ email: booking.user.email }], () => ({
+      ...payload,
+      idempotency_key: `car-updated-${updated.id}-${updated.updatedAt.getTime()}-${booking.user.email!.toLowerCase()}`,
+    }));
+  }
+
+  const { defaultDriver, ...carRest } = updated.car;
+  return NextResponse.json({ ...updated, car: carRest, notification });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -98,12 +142,45 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const role    = session.user.role;
   const userId  = parseInt(session.user.id);
 
-  const booking = await prisma.booking.findUnique({ where: { id: parseInt(id) } });
+  const booking = await prisma.booking.findUnique({
+    where: { id: parseInt(id) },
+    include: {
+      user: { select: { email: true } },
+      car:  { select: { name: true, plate: true, defaultDriver: { select: { name: true, phone: true } } } },
+    },
+  });
   if (!booking) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (role !== "ADMIN" && booking.userId !== userId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // Send the cancellation notice before deleting the record.
+  let notification = null;
+  if (booking.user.email) {
+    const bookingDate = toWIBDateStr(booking.startTime);
+    const assignment = await prisma.carAssignment.findUnique({
+      where:   { carId_date: { carId: booking.carId, date: bookingDate } },
+      include: { driver: { select: { name: true, phone: true } } },
+    });
+    const driver = assignment?.driver ?? booking.car.defaultDriver ?? null;
+    const payload = vehicleNotification(
+      {
+        id: booking.id,
+        title: booking.title,
+        description: booking.description,
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+        car: { name: booking.car.name, plate: booking.car.plate },
+        driver,
+      },
+      "cancelled"
+    );
+    notification = await notifyRecipients([{ email: booking.user.email }], () => ({
+      ...payload,
+      idempotency_key: `car-cancelled-${booking.id}-${booking.user.email!.toLowerCase()}`,
+    }));
+  }
+
   await prisma.booking.delete({ where: { id: parseInt(id) } });
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, notification });
 }
