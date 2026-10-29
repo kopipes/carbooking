@@ -2,9 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { wibToUTC } from "@/lib/wib";
-import { notifyRecipients } from "@/lib/notiv";
+import { deliverNotifications } from "@/lib/deliver";
 import { recordNotificationResults } from "@/lib/notification-log";
-import { meetingNotification } from "@/lib/notification-templates";
+import { meetingNotification, notificationEmail } from "@/lib/notification-templates";
 import { resolveParticipants } from "@/lib/participants";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -134,10 +134,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         },
         "updated"
       );
-      notification = await notifyRecipients(recipients, r => ({
-        ...payload,
-        idempotency_key: `meeting-updated-${updated.id}-${updated.updatedAt.getTime()}-${r.email.toLowerCase()}`,
-      }));
+      notification = await deliverNotifications({
+        recipients,
+        buildNotiv: r => ({
+          ...payload,
+          idempotency_key: `meeting-updated-${updated.id}-${updated.updatedAt.getTime()}-${r.email.toLowerCase()}`,
+        }),
+        buildEmail: () => notificationEmail(payload),
+      });
       await recordNotificationResults({
         type: "meeting",
         action: "updated",
@@ -192,10 +196,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
       },
       "cancelled"
     );
-    notification = await notifyRecipients(recipients, r => ({
-      ...payload,
-      idempotency_key: `meeting-cancelled-${booking.id}-${r.email.toLowerCase()}`,
-    }));
+    notification = await deliverNotifications({
+      recipients,
+      buildNotiv: r => ({
+        ...payload,
+        idempotency_key: `meeting-cancelled-${booking.id}-${r.email.toLowerCase()}`,
+      }),
+      buildEmail: () => notificationEmail(payload),
+    });
     await recordNotificationResults({
       type: "meeting",
       action: "cancelled",

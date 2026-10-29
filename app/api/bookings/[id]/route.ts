@@ -2,9 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { wibToUTC, toWIBDateStr } from "@/lib/wib";
-import { notifyRecipients } from "@/lib/notiv";
+import { deliverNotifications } from "@/lib/deliver";
 import { recordNotificationResults } from "@/lib/notification-log";
-import { vehicleNotification } from "@/lib/notification-templates";
+import { vehicleNotification, notificationEmail } from "@/lib/notification-templates";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -125,10 +125,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       },
       "updated"
     );
-    notification = await notifyRecipients([{ email: booking.user.email }], () => ({
-      ...payload,
-      idempotency_key: `car-updated-${updated.id}-${updated.updatedAt.getTime()}-${booking.user.email!.toLowerCase()}`,
-    }));
+    notification = await deliverNotifications({
+      recipients: [{ email: booking.user.email }],
+      buildNotiv: () => ({
+        ...payload,
+        idempotency_key: `car-updated-${updated.id}-${updated.updatedAt.getTime()}-${booking.user.email!.toLowerCase()}`,
+      }),
+      buildEmail: () => notificationEmail(payload),
+    });
     await recordNotificationResults({
       type: "booking",
       action: "updated",
@@ -182,10 +186,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
       },
       "cancelled"
     );
-    notification = await notifyRecipients([{ email: booking.user.email }], () => ({
-      ...payload,
-      idempotency_key: `car-cancelled-${booking.id}-${booking.user.email!.toLowerCase()}`,
-    }));
+    notification = await deliverNotifications({
+      recipients: [{ email: booking.user.email }],
+      buildNotiv: () => ({
+        ...payload,
+        idempotency_key: `car-cancelled-${booking.id}-${booking.user.email!.toLowerCase()}`,
+      }),
+      buildEmail: () => notificationEmail(payload),
+    });
     await recordNotificationResults({
       type: "booking",
       action: "cancelled",

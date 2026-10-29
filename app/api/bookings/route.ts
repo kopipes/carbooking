@@ -2,9 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { toWIBDateStr, wibToUTC } from "@/lib/wib";
-import { notifyRecipients } from "@/lib/notiv";
+import { deliverNotifications } from "@/lib/deliver";
 import { recordNotificationResults } from "@/lib/notification-log";
-import { vehicleNotification } from "@/lib/notification-templates";
+import { vehicleNotification, notificationEmail } from "@/lib/notification-templates";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -170,10 +170,14 @@ export async function POST(req: NextRequest) {
       },
       "created"
     );
-    notification = await notifyRecipients([{ email: recipientEmail }], () => ({
-      ...payload,
-      idempotency_key: `car-created-${booking.id}-${recipientEmail.toLowerCase()}`,
-    }));
+    notification = await deliverNotifications({
+      recipients: [{ email: recipientEmail }],
+      buildNotiv: () => ({
+        ...payload,
+        idempotency_key: `car-created-${booking.id}-${recipientEmail.toLowerCase()}`,
+      }),
+      buildEmail: () => notificationEmail(payload),
+    });
     await recordNotificationResults({
       type: "booking",
       action: "created",

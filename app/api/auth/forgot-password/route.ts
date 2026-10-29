@@ -1,11 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
 import crypto from "crypto";
-import { notifyRecipients, type NotificationSummary } from "@/lib/notiv";
+import { deliverNotifications } from "@/lib/deliver";
 import { recordNotificationResults } from "@/lib/notification-log";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 function appBaseUrl(): string {
   return (
@@ -62,62 +59,37 @@ export async function POST(req: NextRequest) {
 
   const resetUrl = `${appBaseUrl()}/reset-password?token=${token}`;
 
-  // Primary channel: Notiv inbox. The token is sensitive, so the message is
-  // marked sensitive (hidden from other admins and push previews) and expires
-  // together with the token.
-  const notiv = await notifyRecipients([{ email }], () => ({
-    type: "password_reset",
-    title: "Reset Password — Booking",
-    message: [
-      `Hai ${user.name}, kami menerima permintaan reset password untuk akun kamu.`,
-      `Buka tautan berikut untuk membuat password baru (berlaku 1 jam):`,
-      resetUrl,
-      ``,
-      `Kalau kamu tidak meminta reset password, abaikan pesan ini. Password kamu tidak akan berubah.`,
-    ].join("\n"),
-    action_url: resetUrl,
-    sensitive: true,
-    expires_at: expiresAt.toISOString(),
-    idempotency_key: `password-reset-${token}`,
-  }));
+  const title = "Reset Password — Booking";
+  const message = [
+    `Hai ${user.name}, kami menerima permintaan reset password untuk akun kamu.`,
+    `Buka tautan berikut untuk membuat password baru (berlaku 1 jam):`,
+    resetUrl,
+    ``,
+    `Kalau kamu tidak meminta reset password, abaikan pesan ini. Password kamu tidak akan berubah.`,
+  ].join("\n");
 
-  // Fallback: if Notiv cannot deliver (e.g. recipient not verified/connected),
-  // still send the link by email so the user is not locked out.
-  let emailResult: { ok: boolean; error?: string } | null = null;
-  if (notiv.failed > 0) {
-    try {
-      const res = await resend.emails.send({
-        from: process.env.RESEND_FROM_EMAIL ?? "no-reply@provaliantgroup.com",
-        to:   email,
-        subject: "Reset Password — Booking",
-        html: emailHtml(user.name, resetUrl),
-      });
-      emailResult = res.error
-        ? { ok: false, error: res.error.message }
-        : { ok: true };
-    } catch (err) {
-      emailResult = { ok: false, error: err instanceof Error ? err.message : String(err) };
-    }
-  }
+  // Primary channel: Notiv inbox, with an email fallback so a user whose Notiv
+  // account is missing/unverified is never locked out. The token is sensitive,
+  // so the Notiv message is marked sensitive (hidden from other admins and push
+  // previews) and expires together with the token.
+  const summary = await deliverNotifications({
+    recipients: [{ email, name: user.name }],
+    buildNotiv: () => ({
+      type: "password_reset",
+      title,
+      message,
+      action_url: resetUrl,
+      sensitive: true,
+      expires_at: expiresAt.toISOString(),
+      idempotency_key: `password-reset-${token}`,
+    }),
+    buildEmail: () => ({
+      subject: title,
+      text: message,
+      html: emailHtml(user.name, resetUrl),
+    }),
+  });
 
-  // Record both attempts so admins can see what happened.
-  const results = [...notiv.results];
-  if (emailResult) {
-    results.push({
-      email,
-      ok: emailResult.ok,
-      status: null,
-      error: emailResult.ok
-        ? "Notiv gagal — terkirim via email (fallback)"
-        : `Notiv gagal dan email gagal: ${emailResult.error ?? "unknown"}`,
-    });
-  }
-  const summary: NotificationSummary = {
-    sent: results.filter(r => r.ok).length,
-    failed: results.filter(r => !r.ok).length,
-    failures: results.filter(r => !r.ok).map(r => ({ email: r.email, error: r.error ?? "Unknown error" })),
-    results,
-  };
   await recordNotificationResults({
     type: "password_reset",
     action: "requested",

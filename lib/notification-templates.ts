@@ -19,6 +19,17 @@ const KIND_PREFIX: Record<NotificationKind, string> = {
   cancelled: "Dibatalkan: ",
 };
 
+/** Build the email fallback (used when Notiv cannot reach a recipient). */
+export function notificationEmail(payload: {
+  title: string;
+  message: string;
+  action_url?: string;
+}): { subject: string; text: string } {
+  const lines = [payload.message];
+  if (payload.action_url) lines.push("", `Lihat detail: ${payload.action_url}`);
+  return { subject: payload.title, text: lines.join("\n") };
+}
+
 export interface VehicleNotificationInput {
   id: number;
   title: string;

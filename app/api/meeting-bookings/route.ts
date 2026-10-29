@@ -2,9 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { wibToUTC } from "@/lib/wib";
-import { notifyRecipients } from "@/lib/notiv";
+import { deliverNotifications } from "@/lib/deliver";
 import { recordNotificationResults } from "@/lib/notification-log";
-import { meetingNotification } from "@/lib/notification-templates";
+import { meetingNotification, notificationEmail } from "@/lib/notification-templates";
 import { resolveParticipants } from "@/lib/participants";
 
 export async function GET(req: NextRequest) {
@@ -130,10 +130,14 @@ export async function POST(req: NextRequest) {
     "created"
   );
   const notification = recipients.length
-    ? await notifyRecipients(recipients, r => ({
-        ...payload,
-        idempotency_key: `meeting-created-${booking.id}-${r.email.toLowerCase()}`,
-      }))
+    ? await deliverNotifications({
+        recipients,
+        buildNotiv: r => ({
+          ...payload,
+          idempotency_key: `meeting-created-${booking.id}-${r.email.toLowerCase()}`,
+        }),
+        buildEmail: () => notificationEmail(payload),
+      })
     : null;
 
   await recordNotificationResults({
