@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { wibToUTC } from "@/lib/wib";
 import { notifyRecipients } from "@/lib/notiv";
+import { recordNotificationResults } from "@/lib/notification-log";
 import { meetingNotification } from "@/lib/notification-templates";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -143,6 +144,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ...payload,
         idempotency_key: `meeting-updated-${updated.id}-${updated.updatedAt.getTime()}-${r.email.toLowerCase()}`,
       }));
+      await recordNotificationResults({
+        type: "meeting",
+        action: "updated",
+        bookingId: updated.id,
+        notification,
+      });
     }
   }
 
@@ -195,6 +202,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
       ...payload,
       idempotency_key: `meeting-cancelled-${booking.id}-${r.email.toLowerCase()}`,
     }));
+    await recordNotificationResults({
+      type: "meeting",
+      action: "cancelled",
+      bookingId: booking.id,
+      notification,
+    });
   }
 
   await prisma.meetingBooking.delete({ where: { id: parseInt(id) } });

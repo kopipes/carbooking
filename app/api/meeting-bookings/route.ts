@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { wibToUTC } from "@/lib/wib";
 import { notifyRecipients } from "@/lib/notiv";
+import { recordNotificationResults } from "@/lib/notification-log";
 import { meetingNotification } from "@/lib/notification-templates";
 
 export async function GET(req: NextRequest) {
@@ -141,6 +142,13 @@ export async function POST(req: NextRequest) {
         idempotency_key: `meeting-created-${booking.id}-${r.email.toLowerCase()}`,
       }))
     : null;
+
+  await recordNotificationResults({
+    type: "meeting",
+    action: "created",
+    bookingId: booking.id,
+    notification,
+  });
 
   return NextResponse.json(
     { ...booking, notification },

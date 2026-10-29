@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { wibToUTC, toWIBDateStr } from "@/lib/wib";
 import { notifyRecipients } from "@/lib/notiv";
+import { recordNotificationResults } from "@/lib/notification-log";
 import { vehicleNotification } from "@/lib/notification-templates";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -128,6 +129,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...payload,
       idempotency_key: `car-updated-${updated.id}-${updated.updatedAt.getTime()}-${booking.user.email!.toLowerCase()}`,
     }));
+    await recordNotificationResults({
+      type: "booking",
+      action: "updated",
+      bookingId: updated.id,
+      notification,
+    });
   }
 
   const { defaultDriver, ...carRest } = updated.car;
@@ -179,6 +186,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
       ...payload,
       idempotency_key: `car-cancelled-${booking.id}-${booking.user.email!.toLowerCase()}`,
     }));
+    await recordNotificationResults({
+      type: "booking",
+      action: "cancelled",
+      bookingId: booking.id,
+      notification,
+    });
   }
 
   await prisma.booking.delete({ where: { id: parseInt(id) } });

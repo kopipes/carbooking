@@ -90,10 +90,11 @@ export default function EditMeetingBookingPage() {
       if (!res.ok) throw new Error((await res.json()).error ?? "Gagal menyimpan");
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       qc.invalidateQueries({ queryKey: ["meeting-booking", id] });
       qc.invalidateQueries({ queryKey: ["meeting-bookings"] });
-      router.push(`/meeting-bookings/${id}`);
+      const failed = data?.notification?.failed ?? 0;
+      router.push(`/meeting-bookings/${id}${failed > 0 ? `?notifFailed=${failed}` : ""}`);
     },
     onError: (e: any) => setError(e.message),
   });

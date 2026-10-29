@@ -88,7 +88,8 @@ function NewBookingForm() {
       // Invalidate availability cache so calendar updates immediately
       qc.invalidateQueries({ queryKey: ["availability"] });
       qc.invalidateQueries({ queryKey: ["calendar-bookings"] });
-      router.push(`/bookings/${data.id}`);
+      const failed = data.notification?.failed ?? 0;
+      router.push(`/bookings/${data.id}${failed > 0 ? `?notifFailed=${failed}` : ""}`);
     }
   }
 

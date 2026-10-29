@@ -77,7 +77,8 @@ function NewMeetingBookingForm() {
     qc.invalidateQueries({ queryKey: ["meeting-availability"] });
     qc.invalidateQueries({ queryKey: ["calendar-meeting-bookings"] });
     qc.invalidateQueries({ queryKey: ["meeting-rooms-available"] });
-    router.push(`/meeting-bookings/${data.id}`);
+    const failed = data.notification?.failed ?? 0;
+    router.push(`/meeting-bookings/${data.id}${failed > 0 ? `?notifFailed=${failed}` : ""}`);
   }
 
   const timeOptions: string[] = [];

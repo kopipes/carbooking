@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { fmtWIB, getSlotLabel } from "@/lib/wib";
 
@@ -12,6 +13,12 @@ export default function MeetingBookingDetailPage() {
   const qc                = useQueryClient();
   const role              = session?.user?.role;
   const userId            = session?.user?.id;
+  const [notifFailed, setNotifFailed] = useState(0);
+
+  useEffect(() => {
+    const n = Number(new URLSearchParams(window.location.search).get("notifFailed"));
+    if (Number.isFinite(n) && n > 0) setNotifFailed(n);
+  }, []);
 
   const { data: booking, isLoading } = useQuery({
     queryKey: ["meeting-booking", id],
@@ -44,6 +51,13 @@ export default function MeetingBookingDetailPage() {
   return (
     <div className="max-w-xl mx-auto space-y-5">
       <Link href="/meeting-bookings" className="text-gray-400 hover:text-gray-600 text-sm">← Kembali</Link>
+
+      {notifFailed > 0 && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 text-sm text-yellow-800">
+          Booking tersimpan, tetapi {notifFailed} notifikasi gagal terkirim. Penerima
+          kemungkinan belum terdaftar/terverifikasi atau belum terhubung ke Notiv.
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-5">
         <div>

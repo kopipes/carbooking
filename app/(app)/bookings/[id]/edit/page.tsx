@@ -84,10 +84,11 @@ export default function EditBookingPage() {
       if (!res.ok) throw new Error(data.error ?? "Gagal menyimpan");
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       qc.invalidateQueries({ queryKey: ["booking", id] });
       qc.invalidateQueries({ queryKey: ["bookings"] });
-      router.push(`/bookings/${id}`);
+      const failed = data?.notification?.failed ?? 0;
+      router.push(`/bookings/${id}${failed > 0 ? `?notifFailed=${failed}` : ""}`);
     },
     onError: (e: any) => setError(e.message),
   });

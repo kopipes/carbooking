@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { toWIBDateStr, wibToUTC } from "@/lib/wib";
 import { notifyRecipients } from "@/lib/notiv";
+import { recordNotificationResults } from "@/lib/notification-log";
 import { vehicleNotification } from "@/lib/notification-templates";
 
 export async function GET(req: NextRequest) {
@@ -173,6 +174,12 @@ export async function POST(req: NextRequest) {
       ...payload,
       idempotency_key: `car-created-${booking.id}-${recipientEmail.toLowerCase()}`,
     }));
+    await recordNotificationResults({
+      type: "booking",
+      action: "created",
+      bookingId: booking.id,
+      notification,
+    });
   }
 
   const { defaultDriver, ...carRest } = booking.car;

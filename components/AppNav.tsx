@@ -59,6 +59,7 @@ const adminItems = [
   { href: "/admin/drivers",       label: "Drivers"       },
   { href: "/admin/assignments",   label: "Penugasan"     },
   { href: "/admin/meeting-rooms", label: "Meeting Rooms" },
+  { href: "/admin/notifications",  label: "Notif Log"     },
 ];
 
 export default function AppNav() {

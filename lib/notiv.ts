@@ -107,10 +107,18 @@ export interface RecipientNotification {
   label?: string;
 }
 
+export interface NotificationResultEntry {
+  email: string;
+  ok: boolean;
+  status: number | null;
+  error?: string;
+}
+
 export interface NotificationSummary {
   sent: number;
   failed: number;
   failures: { email: string; error: string }[];
+  results: NotificationResultEntry[];
 }
 
 /**
@@ -132,6 +140,7 @@ export async function notifyRecipients(
 
   const queue = [...unique.values()];
   const failures: NotificationSummary["failures"] = [];
+  const results: NotificationResultEntry[] = [];
   let sent = 0;
 
   async function worker() {
@@ -142,6 +151,12 @@ export async function notifyRecipients(
         recipient_email: recipient.email,
         ...build(recipient),
       });
+      results.push({
+        email: recipient.email,
+        ok: result.ok,
+        status: result.status,
+        error: result.error,
+      });
       if (result.ok) sent++;
       else failures.push({ email: recipient.email, error: result.error ?? "Unknown error" });
     }
@@ -151,5 +166,5 @@ export async function notifyRecipients(
     Array.from({ length: Math.min(concurrency, queue.length) }, () => worker())
   );
 
-  return { sent, failed: failures.length, failures };
+  return { sent, failed: failures.length, failures, results };
 }
