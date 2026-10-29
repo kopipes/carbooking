@@ -2,8 +2,8 @@ import { prisma } from "@/lib/prisma";
 import type { NotificationSummary } from "@/lib/notiv";
 
 export interface NotificationLogContext {
-  type: "booking" | "meeting";
-  action: "created" | "updated" | "cancelled";
+  type: "booking" | "meeting" | "password_reset";
+  action: "created" | "updated" | "cancelled" | "requested";
   bookingId: number | null;
   notification: NotificationSummary | null;
 }

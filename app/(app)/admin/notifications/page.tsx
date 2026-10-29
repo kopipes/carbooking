@@ -20,11 +20,13 @@ const ACTION_LABEL: Record<string, string> = {
   created: "Dibuat",
   updated: "Diubah",
   cancelled: "Dibatalkan",
+  requested: "Diminta",
 };
 
 const TYPE_LABEL: Record<string, string> = {
   booking: "Kendaraan",
   meeting: "Meeting Room",
+  password_reset: "Reset Password",
 };
 
 function fmt(d: string) {
@@ -146,7 +148,7 @@ export default function NotificationLogPage() {
                         </span>
                       </td>
                       <td className="px-4 py-2.5 text-xs text-gray-500 max-w-72">
-                        {failed ? (log.error ?? "-") : "-"}
+                        {log.error ?? "-"}
                       </td>
                     </tr>
                   );

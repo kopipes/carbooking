@@ -21,6 +21,7 @@ export interface NotivPayload {
   action_url?: string;
   idempotency_key?: string;
   sensitive?: boolean;
+  expires_at?: string;
 }
 
 export interface NotivResult {

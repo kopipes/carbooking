@@ -33,10 +33,11 @@ function ForgotPasswordForm() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h3 className="font-semibold text-gray-800">Email terkirim</h3>
+        <h3 className="font-semibold text-gray-800">Permintaan terkirim</h3>
         <p className="text-sm text-gray-500">
-          Kalau email <strong>{email}</strong> terdaftar, kamu akan menerima link reset password.
-          Cek inbox (dan folder spam) kamu.
+          Kalau email <strong>{email}</strong> terdaftar, link reset password akan dikirim ke
+          aplikasi <strong>Notiv</strong> kamu. Kalau akun Notiv belum terhubung, link dikirim
+          lewat email sebagai cadangan — cek inbox (dan folder spam).
         </p>
         <p className="text-xs text-gray-400">Link berlaku selama 1 jam.</p>
       </div>
@@ -78,7 +79,7 @@ export default function ForgotPasswordPage() {
         </div>
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
           <h2 className="text-lg font-semibold text-gray-800 mb-1">Lupa Password?</h2>
-          <p className="text-sm text-gray-500 mb-6">Masukkan email kamu dan kami akan kirimkan link reset password.</p>
+          <p className="text-sm text-gray-500 mb-6">Masukkan email kamu dan kami akan kirimkan link reset password ke aplikasi Notiv.</p>
           <Suspense fallback={<div className="text-sm text-gray-400">Loading...</div>}>
             <ForgotPasswordForm />
           </Suspense>
