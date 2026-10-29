@@ -12,10 +12,21 @@ export interface DirectoryUser {
 interface Props {
   selected: number[];
   onChange: (ids: number[]) => void;
+  externalEmails: string[];
+  onExternalEmailsChange: (emails: string[]) => void;
 }
 
-export default function ParticipantPicker({ selected, onChange }: Props) {
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export default function ParticipantPicker({
+  selected,
+  onChange,
+  externalEmails,
+  onExternalEmailsChange,
+}: Props) {
   const [query, setQuery] = useState("");
+  const [emailInput, setEmailInput] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   const { data: users, isLoading, isError } = useQuery<DirectoryUser[]>({
     queryKey: ["users-directory"],
@@ -40,7 +51,36 @@ export default function ParticipantPicker({ selected, onChange }: Props) {
     onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]);
   }
 
+  function addExternalEmail() {
+    const email = emailInput.trim().toLowerCase();
+    if (!email) return;
+
+    if (email.length > 254 || !EMAIL_RE.test(email)) {
+      setEmailError("Format email tidak valid");
+      return;
+    }
+
+    const isAppUser = (users ?? []).some(u => u.email.toLowerCase() === email);
+    if (isAppUser) {
+      setEmailError("Email ini sudah ada di daftar user — centang namanya di atas");
+      return;
+    }
+    if (externalEmails.some(e => e.toLowerCase() === email)) {
+      setEmailError("Email sudah ditambahkan");
+      return;
+    }
+
+    onExternalEmailsChange([...externalEmails, email]);
+    setEmailInput("");
+    setEmailError("");
+  }
+
+  function removeExternalEmail(email: string) {
+    onExternalEmailsChange(externalEmails.filter(e => e !== email));
+  }
+
   const selectedUsers = (users ?? []).filter(u => selected.includes(u.id));
+  const totalSelected = selectedUsers.length + externalEmails.length;
 
   return (
     <div>
@@ -48,20 +88,29 @@ export default function ParticipantPicker({ selected, onChange }: Props) {
         <label className="block text-xs font-medium text-gray-600">
           Peserta <span className="text-gray-400">(opsional)</span>
         </label>
-        {selected.length > 0 && (
-          <button type="button" onClick={() => onChange([])}
+        {totalSelected > 0 && (
+          <button type="button" onClick={() => { onChange([]); onExternalEmailsChange([]); }}
             className="text-xs text-purple-600 hover:underline">Kosongkan</button>
         )}
       </div>
 
-      {selectedUsers.length > 0 && (
+      {totalSelected > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-2">
           {selectedUsers.map(u => (
-            <span key={u.id}
+            <span key={`u-${u.id}`}
               className="inline-flex items-center gap-1 text-xs bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded-full">
               {u.name}
               <button type="button" onClick={() => toggle(u.id)}
                 className="text-purple-400 hover:text-purple-700" aria-label={`Hapus ${u.name}`}>✕</button>
+            </span>
+          ))}
+          {externalEmails.map(email => (
+            <span key={`e-${email}`}
+              className="inline-flex items-center gap-1 text-xs bg-gray-50 text-gray-700 border border-dashed border-gray-300 px-2 py-0.5 rounded-full">
+              {email}
+              <span className="text-[10px] text-gray-400">eksternal</span>
+              <button type="button" onClick={() => removeExternalEmail(email)}
+                className="text-gray-400 hover:text-gray-700" aria-label={`Hapus ${email}`}>✕</button>
             </span>
           ))}
         </div>
@@ -96,8 +145,31 @@ export default function ParticipantPicker({ selected, onChange }: Props) {
           ))
         )}
       </div>
+
+      {/* External email */}
+      <div className="mt-3">
+        <label className="block text-xs font-medium text-gray-600 mb-1">
+          Email lain <span className="text-gray-400">(di luar daftar user)</span>
+        </label>
+        <div className="flex gap-2">
+          <input
+            type="email" value={emailInput}
+            onChange={e => { setEmailInput(e.target.value); setEmailError(""); }}
+            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addExternalEmail(); } }}
+            placeholder="nama@perusahaan.com"
+            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+          <button type="button" onClick={addExternalEmail}
+            className="px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50">
+            Tambah
+          </button>
+        </div>
+        {emailError && <p className="text-xs text-red-500 mt-1">{emailError}</p>}
+      </div>
+
       <p className="text-xs text-gray-400 mt-1">
         Notifikasi dikirim ke pemesan dan peserta yang dipilih (via aplikasi Notiv).
+        Email eksternal hanya menerima notifikasi jika akun Notiv-nya aktif dan terhubung.
       </p>
     </div>
   );

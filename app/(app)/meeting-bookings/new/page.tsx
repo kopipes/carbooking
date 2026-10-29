@@ -17,6 +17,7 @@ function NewMeetingBookingForm() {
     startTime: "", endTime: "",
   });
   const [participantIds, setParticipantIds] = useState<number[]>([]);
+  const [externalEmails, setExternalEmails] = useState<string[]>([]);
   const [error, setError]     = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -68,6 +69,7 @@ function NewMeetingBookingForm() {
         startSlot: form.startTime, endSlot: form.endTime,
         durationMin: String(durationMin),
         participants: participantIds,
+        externalEmails,
       }),
     });
     setLoading(false);
@@ -172,7 +174,12 @@ function NewMeetingBookingForm() {
           )}
         </div>
 
-        <ParticipantPicker selected={participantIds} onChange={setParticipantIds} />
+        <ParticipantPicker
+          selected={participantIds}
+          onChange={setParticipantIds}
+          externalEmails={externalEmails}
+          onExternalEmailsChange={setExternalEmails}
+        />
 
         {error && <p className="text-red-500 text-sm">{error}</p>}
 

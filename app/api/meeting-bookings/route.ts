@@ -5,6 +5,7 @@ import { wibToUTC } from "@/lib/wib";
 import { notifyRecipients } from "@/lib/notiv";
 import { recordNotificationResults } from "@/lib/notification-log";
 import { meetingNotification } from "@/lib/notification-templates";
+import { resolveParticipants } from "@/lib/participants";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -61,23 +62,15 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { title, description, meetingRoomId, date, startSlot, endSlot, durationMin, participants } = body;
+  const { title, description, meetingRoomId, date, startSlot, endSlot, durationMin, participants, externalEmails } = body;
 
   if (!title || !meetingRoomId || !date || !startSlot || !endSlot || !durationMin) {
     return NextResponse.json({ error: "Lengkapi semua field yang wajib diisi" }, { status: 400 });
   }
 
-  const participantIds: number[] = Array.isArray(participants)
-    ? [...new Set(participants.map((v: unknown) => parseInt(String(v))).filter(Number.isFinite))]
-    : [];
-
-  if (participantIds.length) {
-    const validCount = await prisma.user.count({
-      where: { id: { in: participantIds }, active: true },
-    });
-    if (validCount !== participantIds.length) {
-      return NextResponse.json({ error: "Peserta tidak valid atau tidak aktif" }, { status: 400 });
-    }
+  const resolved = await resolveParticipants(participants, externalEmails);
+  if (!resolved.ok) {
+    return NextResponse.json({ error: resolved.error }, { status: 400 });
   }
 
   const start = wibToUTC(date, startSlot);
@@ -106,14 +99,14 @@ export async function POST(req: NextRequest) {
       startTime:     start,
       endTime:       end,
       durationMin:   parseInt(durationMin),
-      participants: participantIds.length
-        ? { create: participantIds.map(userId => ({ userId })) }
+      participants: resolved.records.length
+        ? { create: resolved.records }
         : undefined,
     },
     include: {
       user:        { select: { name: true, email: true } },
       meetingRoom: { select: { name: true } },
-      participants: { include: { user: { select: { name: true, email: true } } } },
+      participants: true,
     },
   });
 
@@ -121,7 +114,7 @@ export async function POST(req: NextRequest) {
   const recipients = [
     ...(booking.user.email ? [{ email: booking.user.email }] : []),
     ...booking.participants
-      .map(p => ({ email: p.user.email }))
+      .map(p => ({ email: p.email }))
       .filter((r): r is { email: string } => Boolean(r.email)),
   ];
   const payload = meetingNotification(
@@ -132,7 +125,7 @@ export async function POST(req: NextRequest) {
       startTime: booking.startTime,
       endTime: booking.endTime,
       meetingRoom: { name: booking.meetingRoom.name },
-      participants: booking.participants.map(p => ({ name: p.user.name })),
+      participants: booking.participants.map(p => ({ name: p.name })),
     },
     "created"
   );

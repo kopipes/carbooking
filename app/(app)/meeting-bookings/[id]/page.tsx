@@ -106,8 +106,13 @@ export default function MeetingBookingDetailPage() {
             <div className="flex flex-wrap gap-1.5">
               {booking.participants.map((p: any) => (
                 <span key={p.id}
-                  className="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded-full">
-                  {p.user.name}
+                  className={`text-xs px-2 py-0.5 rounded-full border ${
+                    p.userId == null
+                      ? "bg-gray-50 text-gray-700 border-dashed border-gray-300"
+                      : "bg-purple-50 text-purple-700 border-purple-200"
+                  }`}>
+                  {p.name}
+                  {p.userId == null && <span className="ml-1 text-[10px] text-gray-400">eksternal</span>}
                 </span>
               ))}
             </div>

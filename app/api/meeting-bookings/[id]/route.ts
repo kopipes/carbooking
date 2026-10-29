@@ -5,6 +5,7 @@ import { wibToUTC } from "@/lib/wib";
 import { notifyRecipients } from "@/lib/notiv";
 import { recordNotificationResults } from "@/lib/notification-log";
 import { meetingNotification } from "@/lib/notification-templates";
+import { resolveParticipants } from "@/lib/participants";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -16,7 +17,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     include: {
       user:        { select: { name: true, email: true, division: { select: { name: true } } } },
       meetingRoom: true,
-      participants: { include: { user: { select: { id: true, name: true, email: true } } } },
+      participants: true,
     },
   });
   if (!booking) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -40,7 +41,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     where: { id: parseInt(id) },
     include: {
       user:         { select: { email: true } },
-      participants: { select: { userId: true } },
+      participants: { select: { userId: true, email: true } },
     },
   });
   if (!booking) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -49,23 +50,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const body = await req.json();
-  const { title, description, meetingRoomId, date, startSlot, endSlot, durationMin, participants } = body;
+  const { title, description, meetingRoomId, date, startSlot, endSlot, durationMin, participants, externalEmails } = body;
 
   if (!title || !meetingRoomId || !date || !startSlot || !endSlot || !durationMin) {
     return NextResponse.json({ error: "Lengkapi semua field yang wajib diisi" }, { status: 400 });
   }
 
-  const participantIds: number[] = Array.isArray(participants)
-    ? [...new Set(participants.map((v: unknown) => parseInt(String(v))).filter(Number.isFinite))]
-    : [];
-
-  if (participantIds.length) {
-    const validCount = await prisma.user.count({
-      where: { id: { in: participantIds }, active: true },
-    });
-    if (validCount !== participantIds.length) {
-      return NextResponse.json({ error: "Peserta tidak valid atau tidak aktif" }, { status: 400 });
-    }
+  const resolved = await resolveParticipants(participants, externalEmails);
+  if (!resolved.ok) {
+    return NextResponse.json({ error: resolved.error }, { status: 400 });
   }
 
   const start = wibToUTC(date, startSlot);
@@ -97,21 +90,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       durationMin:   parseInt(durationMin),
       participants: {
         deleteMany: {},
-        create: participantIds.map(userId => ({ userId })),
+        create: resolved.records,
       },
     },
     include: {
       user:        { select: { name: true, email: true } },
       meetingRoom: { select: { name: true } },
-      participants: { include: { user: { select: { name: true, email: true } } } },
+      participants: true,
     },
   });
 
   // Notify only when a schedule-relevant field actually changed.
-  const beforeIds = new Set(booking.participants.map(p => p.userId));
+  const beforeEmails = new Set(booking.participants.map(p => p.email.toLowerCase()));
+  const afterEmails  = new Set(resolved.records.map(p => p.email.toLowerCase()));
   const participantsChanged =
-    beforeIds.size !== participantIds.length ||
-    participantIds.some(id => !beforeIds.has(id));
+    beforeEmails.size !== afterEmails.size ||
+    [...afterEmails].some(email => !beforeEmails.has(email));
   const scheduleChanged =
     booking.title !== title ||
     booking.meetingRoomId !== parseInt(meetingRoomId) ||
@@ -124,7 +118,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const recipients = [
       ...(updated.user.email ? [{ email: updated.user.email }] : []),
       ...updated.participants
-        .map(p => ({ email: p.user.email }))
+        .map(p => ({ email: p.email }))
         .filter((r): r is { email: string } => Boolean(r.email)),
     ];
     if (recipients.length) {
@@ -136,7 +130,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           startTime: updated.startTime,
           endTime: updated.endTime,
           meetingRoom: { name: updated.meetingRoom.name },
-          participants: updated.participants.map(p => ({ name: p.user.name })),
+          participants: updated.participants.map(p => ({ name: p.name })),
         },
         "updated"
       );
@@ -169,7 +163,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     include: {
       user:         { select: { email: true } },
       meetingRoom:  { select: { name: true } },
-      participants: { include: { user: { select: { name: true, email: true } } } },
+      participants: true,
     },
   });
   if (!booking) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -181,7 +175,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const recipients = [
     ...(booking.user.email ? [{ email: booking.user.email }] : []),
     ...booking.participants
-      .map(p => ({ email: p.user.email }))
+      .map(p => ({ email: p.email }))
       .filter((r): r is { email: string } => Boolean(r.email)),
   ];
   let notification = null;
@@ -194,7 +188,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
         startTime: booking.startTime,
         endTime: booking.endTime,
         meetingRoom: { name: booking.meetingRoom.name },
-        participants: booking.participants.map(p => ({ name: p.user.name })),
+        participants: booking.participants.map(p => ({ name: p.name })),
       },
       "cancelled"
     );

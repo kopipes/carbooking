@@ -18,6 +18,7 @@ export default function EditMeetingBookingPage() {
   });
   const [error, setError] = useState("");
   const [participantIds, setParticipantIds] = useState<number[]>([]);
+  const [externalEmails, setExternalEmails] = useState<string[]>([]);
 
   const { data: booking, isLoading } = useQuery({
     queryKey: ["meeting-booking", id],
@@ -46,8 +47,12 @@ export default function EditMeetingBookingPage() {
       startTime:     toWIBTime(booking.startTime),
       endTime:       toWIBTime(booking.endTime),
     });
+    const participants: { userId: number | null; email: string }[] = booking.participants ?? [];
     setParticipantIds(
-      (booking.participants ?? []).map((p: { userId: number }) => p.userId)
+      participants.filter(p => p.userId != null).map(p => p.userId as number)
+    );
+    setExternalEmails(
+      participants.filter(p => p.userId == null).map(p => p.email)
     );
   }, [booking]);
 
@@ -85,6 +90,7 @@ export default function EditMeetingBookingPage() {
           endSlot:       form.endTime,
           durationMin:   String(durationMin),
           participants:  participantIds,
+          externalEmails,
         }),
       });
       if (!res.ok) throw new Error((await res.json()).error ?? "Gagal menyimpan");
@@ -191,7 +197,12 @@ export default function EditMeetingBookingPage() {
           )}
         </div>
 
-        <ParticipantPicker selected={participantIds} onChange={setParticipantIds} />
+        <ParticipantPicker
+          selected={participantIds}
+          onChange={setParticipantIds}
+          externalEmails={externalEmails}
+          onExternalEmailsChange={setExternalEmails}
+        />
 
         {error && <p className="text-red-500 text-sm">{error}</p>}
 

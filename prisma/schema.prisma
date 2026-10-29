@@ -113,11 +113,13 @@ model MeetingParticipant {
   id               Int            @id @default(autoincrement())
   meetingBookingId Int
   meetingBooking   MeetingBooking @relation(fields: [meetingBookingId], references: [id], onDelete: Cascade)
-  userId           Int
-  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId           Int?
+  user             User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  email            String
+  name             String
   createdAt        DateTime       @default(now())
 
-  @@unique([meetingBookingId, userId])
+  @@unique([meetingBookingId, email])
 }
 
 model NotificationLog {
